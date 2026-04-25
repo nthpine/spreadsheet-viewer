@@ -1000,15 +1000,32 @@
       };
     }
 
-    /** 同一暦日の重複排除用キー（ローカル日） */
-    function calendarDayKeyFromDate(dt) {
-      const x = startOfLocalDay(dt);
-      return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+    /** パースした暦月がシート名 YYYYMM の月と一致するか（正しい月タブを優先する） */
+    function sessionMatchesSheetMonth(dt, sheetName) {
+      const d = startOfLocalDay(dt);
+      if (!/^\d{6}$/.test(sheetName)) return false;
+      const sm = +sheetName.slice(4, 6);
+      return d.getMonth() + 1 === sm;
+    }
+
+    /**
+     * 日付セル＋場所の重複排除用キー（曜日括弧を除き NFKC・空白除去）。
+     * 別年の同じ「5/4」表記が複数月シートに載っているときに二重表示しない。
+     */
+    function sessionDatePlaceDedupeKey(session) {
+      const raw = String(session.date || "")
+        .normalize("NFKC")
+        .trim();
+      const d = raw
+        .replace(/\([^)]*\)/g, "")
+        .replace(/（[^）]*）/g, "")
+        .replace(/\s+/g, "");
+      return `${d}\t${normalizeKeyPart(session.place)}`;
     }
 
     /**
      * 各月シートの列を走査し、本日以降だけを集める。
-     * 日付順に並べ、同一暦日は 1 列だけ残す。
+     * 日付順に並べ、同一「日付セル表記＋場所」は 1 列だけ残す。
      */
     function collectFutureEntriesFromSheets(plan) {
       if (!plan?.sessionsBySheet?.size) return [];
@@ -1027,6 +1044,9 @@
         }
       }
       rows.sort((a, b) => {
+        const ma = sessionMatchesSheetMonth(a.dt, a.sheetName) ? 0 : 1;
+        const mb = sessionMatchesSheetMonth(b.dt, b.sheetName) ? 0 : 1;
+        if (ma !== mb) return ma - mb;
         const ta = startOfLocalDay(a.dt).getTime();
         const tb = startOfLocalDay(b.dt).getTime();
         if (ta !== tb) return ta - tb;
@@ -1035,12 +1055,12 @@
         if (ca !== cb) return ca - cb;
         return a.sheetName.localeCompare(b.sheetName);
       });
-      const seenDay = new Set();
+      const seen = new Set();
       const out = [];
       for (const e of rows) {
-        const dk = calendarDayKeyFromDate(e.dt);
-        if (seenDay.has(dk)) continue;
-        seenDay.add(dk);
+        const key = sessionDatePlaceDedupeKey(e.session);
+        if (seen.has(key)) continue;
+        seen.add(key);
         out.push(e);
       }
       out.sort((a, b) => {
