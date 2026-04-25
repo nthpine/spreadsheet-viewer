@@ -284,13 +284,15 @@
       return null;
     }
 
-    /** 日付文字列が「本日の月日」と一致するか（パース失敗時のフォールバック） */
-    function dateCellLooksLikeToday(dateStr, today0) {
+    /**
+     * 日付文字列が refDay の暦日と一致するか（パース失敗時のフォールバック）。
+     */
+    function dateCellLooksLikeCalendarDay(dateStr, refDay) {
       const t = String(dateStr || "").normalize("NFKC");
-      if (!t) return false;
-      const y = today0.getFullYear();
-      const m = today0.getMonth() + 1;
-      const d = today0.getDate();
+      if (!t || !refDay) return false;
+      const y = refDay.getFullYear();
+      const m = refDay.getMonth() + 1;
+      const d = refDay.getDate();
       if (
         t.includes(`${y}年${m}月${d}日`) ||
         t.includes(`${y}/${m}/${d}`) ||
@@ -309,12 +311,12 @@
       if (dt && sameLocalCalendarDay(startOfLocalDay(dt), targetDay)) {
         return true;
       }
-      return dateCellLooksLikeToday(s.date, targetDay);
+      return dateCellLooksLikeCalendarDay(s.date, targetDay);
     }
 
     /**
-     * 本日の列を最優先。次に「本日以降で最も近い日」、なければ「本日より前で最も新しい日」。
-     * 強調はすべて黄色背景（文言バッジなし）。
+     * 本日の列、なければ「本日以降で最も近い日」の列だけ黄色強調。
+     * 過去日のみのシートでは強調しない。
      */
     function annotateNearestSessions(sessions, ymSix) {
       if (!sessions || !sessions.length) return sessions;
@@ -329,9 +331,8 @@
       const withDt = rows.filter((x) => x.dt);
       let targetDay = null;
 
-      const onCalendarToday = rows.filter(
-        (x) =>
-          sessionHitsTargetDay(x.s, today, ymSix),
+      const onCalendarToday = rows.filter((x) =>
+        sessionHitsTargetDay(x.s, today, ymSix),
       );
       if (onCalendarToday.length) {
         targetDay = today;
@@ -341,17 +342,12 @@
           .sort((a, b) => a.dt - b.dt);
         if (futureOrToday.length) {
           targetDay = startOfLocalDay(futureOrToday[0].dt);
-        } else {
-          const past = withDt
-            .filter((x) => startOfLocalDay(x.dt) < today)
-            .sort((a, b) => b.dt - a.dt);
-          if (past.length) {
-            targetDay = startOfLocalDay(past[0].dt);
-          }
         }
       }
 
-      if (!targetDay) return sessions;
+      if (!targetDay) {
+        return sessions.map((s) => ({ ...s, highlightNext: false }));
+      }
 
       return sessions.map((s) => ({
         ...s,

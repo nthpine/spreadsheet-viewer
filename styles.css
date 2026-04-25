@@ -262,13 +262,16 @@ select:focus {
 
 .session__row {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   font-size: 0.92rem;
+  line-height: 1.35;
   padding: 0.35rem 0.5rem;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid transparent;
+  min-height: 0;
 }
 
 .session__num {
@@ -286,14 +289,15 @@ select:focus {
   flex: 1 1 auto;
   min-width: 0;
   word-break: break-word;
+  line-height: 1.35;
 }
 
 .session__badge {
   flex: 0 0 auto;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  padding: 0.15rem 0.4rem;
+  padding: 0.12rem 0.34rem;
   border-radius: 4px;
   color: #1a1408;
   background: linear-gradient(145deg, var(--first-badge), #f0d78a);
@@ -338,10 +342,10 @@ select:focus {
 
 .session__badge-female {
   flex: 0 0 auto;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  padding: 0.15rem 0.4rem;
+  padding: 0.12rem 0.34rem;
   border-radius: 4px;
   color: #3b0a24;
   background: linear-gradient(145deg, var(--female-accent), #fbcfe8);
