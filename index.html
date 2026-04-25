@@ -76,10 +76,13 @@
     }
 
     function csvLooksValid(text) {
-      const t = String(text || "").trimStart();
+      const t = String(text || "")
+        .replace(/^\uFEFF/, "")
+        .trimStart();
       if (!t || t.startsWith("<") || t.startsWith("<!")) return false;
-      if (t.length < 3) return false;
-      return t.includes(",") && (t.includes("\n") || t.length > 20);
+      if (t.length < 2) return false;
+      /* 1行だけの CSV や改行コード差でも弾かない */
+      return t.includes(",") || t.includes("\t");
     }
 
     async function fetchSheetText(sheetName) {
@@ -96,7 +99,7 @@
     }
 
     async function discoverMonthSheets() {
-      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v1`;
+      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v3`;
       try {
         const raw = sessionStorage.getItem(cacheKey);
         if (raw) {
@@ -296,21 +299,6 @@
       return slots.map(({ raw }) => parseParticipantCell(raw));
     }
 
-    const FW_DIGITS = "０１２３４５６７８９";
-
-    function toFullWidthDigits(num) {
-      return String(num).replace(/\d/g, (d) => FW_DIGITS[parseInt(d, 10)]);
-    }
-
-    function bracketNum(n) {
-      return "［" + toFullWidthDigits(n) + "］";
-    }
-
-    function bracketName(display) {
-      const inner = display && String(display).trim() ? display : "　";
-      return "［" + inner + "］";
-    }
-
     function normalizeKeyPart(s) {
       return String(s || "")
         .normalize("NFKC")
@@ -328,8 +316,9 @@
     }
 
     /**
-     * 「参加者」シートなどから、日付（＋場所が取れるときは場所）が一致する列の名前を補完する。
-     * メインがまったく空ならその列はルックアップ側をそのまま使う。
+     * 「参加者」シートから名前を補完する。
+     * 日付だけの一致は年をまたぐと誤爆するため、列まるごと置換は「日付＋場所」が一致するときのみ。
+     * 日付のみ一致のときは、空のマスだけ埋める（既に名前があるセルは上書きしない）。
      */
     function mergeSessionsFromLookup(mainSessions, lookupSessions) {
       if (!lookupSessions || !lookupSessions.length) return mainSessions;
@@ -361,33 +350,41 @@
         byDate.set(dk, mergedLu);
       }
 
-      function findLookup(date, place) {
+      function findStrict(date, place) {
         const dk = normalizeKeyPart(date);
         const pk = normalizeKeyPart(place);
-        if (dk && pk && pk !== "—") {
-          const hit = byDatePlace.get(`${dk}\t${pk}`);
-          if (hit) return hit;
-        }
+        if (!dk || !pk || pk === "—") return null;
+        return byDatePlace.get(`${dk}\t${pk}`) || null;
+      }
+
+      function findLooseByDate(date) {
+        const dk = normalizeKeyPart(date);
         return dk ? byDate.get(dk) || null : null;
       }
 
       const out = mainSessions.map((s) => {
         const merged = cloneSession(s);
-        const lu = findLookup(s.date, s.place);
-        if (!lu) return merged;
+        const strict = findStrict(s.date, s.place);
+        const loose = strict ? null : findLooseByDate(s.date);
+        const luStrict = strict;
+        const luLoose = loose;
 
         const mainEmpty = !merged.slots.some((x) => x.display);
-        if (mainEmpty) {
-          merged.slots = lu.slots.map((sl) => ({
+
+        if (mainEmpty && luStrict) {
+          merged.slots = luStrict.slots.map((sl) => ({
             display: sl.display,
             isFirst: sl.isFirst,
           }));
           return merged;
         }
 
+        const luForSlots = luStrict || luLoose;
+        if (!luForSlots) return merged;
+
         merged.slots = merged.slots.map((slot, i) => {
           if (slot.display) return slot;
-          const f = lu.slots[i];
+          const f = luForSlots.slots[i];
           if (f && f.display) {
             return { display: f.display, isFirst: f.isFirst };
           }
@@ -478,7 +475,7 @@
           const li = document.createElement("li");
           li.className = "session__row session__row--empty-row";
             li.innerHTML =
-              '<span class="session__num" aria-hidden="true">［—］</span><span class="session__name">［参加者なし］</span>';
+            '<span class="session__num" aria-hidden="true">—</span><span class="session__name">参加者なし</span>';
           ul.appendChild(li);
         } else {
           s.slots.forEach((slot, index) => {
@@ -492,11 +489,11 @@
             const numEl = document.createElement("span");
             numEl.className = "session__num";
             numEl.setAttribute("aria-hidden", "true");
-            numEl.textContent = bracketNum(num);
+            numEl.textContent = String(num);
 
             const nameEl = document.createElement("span");
             nameEl.className = "session__name";
-            nameEl.textContent = bracketName(empty ? "" : slot.display);
+            nameEl.textContent = empty ? "" : slot.display;
 
             li.appendChild(numEl);
             li.appendChild(nameEl);
