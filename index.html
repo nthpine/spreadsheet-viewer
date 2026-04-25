@@ -14,7 +14,7 @@
     <header>
       <div class="brand">
         <h1>NORTH PINE 参加者リスト</h1>
-        <p>プルダウンで「今後の予定」または過去の月を選びます。今後は複数月が日付順にまとまって表示されます。</p>
+        <p>開いたときは今後の予定のみ表示されます。過去の月はプルダウンから選んでください。</p>
       </div>
       <div class="controls controls-row">
         <div class="controls__group">
@@ -851,26 +851,6 @@
       return annotateNearestSessions(sessions, sheetName);
     }
 
-    /** `YYYYMM:列番号` → { sheetName, col } */
-    function parseSessionRef(val) {
-      const s = String(val || "");
-      const i = s.lastIndexOf(":");
-      if (i <= 0) return null;
-      const sheetName = s.slice(0, i);
-      const col = parseInt(s.slice(i + 1), 10);
-      if (!/^\d{6}$/.test(sheetName) || !Number.isFinite(col)) return null;
-      return { sheetName, col };
-    }
-
-    function findPlanEntry(sheetName, col) {
-      if (!sessionPlan || !sessionPlan.allEntries) return null;
-      return (
-        sessionPlan.allEntries.find(
-          (e) => e.sheetName === sheetName && e.session.col === col,
-        ) || null
-      );
-    }
-
     function scrollSessionsToStart() {
       if (sessionsScrollEl) sessionsScrollEl.scrollLeft = 0;
     }
@@ -882,34 +862,37 @@
     }
 
     /**
-     * 「すべて表示」と今後の日付プルダウン用。
-     * セルから再パースして本日以降のみにし、(sheet,col) と暦日の重複を除く。
+     * 各月シートの列を走査し、本日以降だけを集める。
+     * 日付順に並べ、同一暦日は 1 列だけ残す。
      */
-    function strictUpcomingEntriesForAllView(entries) {
+    function collectFutureEntriesFromSheets(plan) {
+      if (!plan?.sessionsBySheet?.size) return [];
       const today = startOfLocalDay(new Date());
-      const sorted = [...(entries || [])]
-        .map((e) => {
-          const dt = parseSessionDateFromCell(e.session.date, e.sheetName);
-          if (!dt) return null;
-          return { ...e, dt };
-        })
-        .filter((e) => e && startOfLocalDay(e.dt) >= today)
-        .sort(
-          (a, b) =>
-            a.dt - b.dt ||
-            a.session.col - b.session.col ||
-            a.sheetName.localeCompare(b.sheetName),
-        );
-      const seenCol = new Set();
+      const sheetOrder = [...plan.sessionsBySheet.keys()].sort((a, b) =>
+        a.localeCompare(b),
+      );
+      const rows = [];
+      for (const sheetName of sheetOrder) {
+        const sessions = plan.sessionsBySheet.get(sheetName);
+        for (const s of sessions) {
+          const dt = parseSessionDateFromCell(s.date, sheetName);
+          if (!dt) continue;
+          if (startOfLocalDay(dt) < today) continue;
+          rows.push({ sheetName, session: s, dt });
+        }
+      }
+      rows.sort(
+        (a, b) =>
+          a.dt - b.dt ||
+          a.session.col - b.session.col ||
+          a.sheetName.localeCompare(b.sheetName),
+      );
       const seenDay = new Set();
       const out = [];
-      for (const e of sorted) {
-        const colKey = `${e.sheetName}:${e.session.col}`;
-        if (seenCol.has(colKey)) continue;
-        seenCol.add(colKey);
-        const dayKey = calendarDayKeyFromDate(e.dt);
-        if (seenDay.has(dayKey)) continue;
-        seenDay.add(dayKey);
+      for (const e of rows) {
+        const dk = calendarDayKeyFromDate(e.dt);
+        if (seenDay.has(dk)) continue;
+        seenDay.add(dk);
         out.push(e);
       }
       return out;
@@ -975,22 +958,15 @@
 
       const today = startOfLocalDay(new Date());
       const pastEntries = [];
-      const upcomingEntries = [];
       for (const e of allEntries) {
-        const d0 = startOfLocalDay(e.dt);
-        if (d0 < today) pastEntries.push(e);
-        else upcomingEntries.push(e);
+        if (startOfLocalDay(e.dt) < today) pastEntries.push(e);
       }
-      upcomingEntries.sort(
-        (a, b) => a.dt - b.dt || a.session.col - b.session.col,
-      );
       pastEntries.sort((a, b) => b.dt - a.dt);
 
       return {
         lookupSessions,
         allEntries,
         pastEntries,
-        upcomingEntries,
         sessionsBySheet,
       };
     }
@@ -1001,7 +977,8 @@
       const ogUp = document.createElement("optgroup");
       ogUp.label = "今後の予定";
 
-      if (!plan.upcomingEntries.length) {
+      const futureRows = collectFutureEntriesFromSheets(plan);
+      if (!futureRows.length) {
         const o = document.createElement("option");
         o.value = "";
         o.textContent = "（今後の予定なし）";
@@ -1010,17 +987,8 @@
       } else {
         const allOpt = document.createElement("option");
         allOpt.value = "__ALL__";
-        allOpt.textContent = "すべて表示（日付順）";
+        allOpt.textContent = "今後の予定（全表示）";
         ogUp.appendChild(allOpt);
-        const upDeduped = strictUpcomingEntriesForAllView(
-          plan.upcomingEntries,
-        );
-        for (const e of upDeduped) {
-          const opt = document.createElement("option");
-          opt.value = `${e.sheetName}:${e.session.col}`;
-          opt.textContent = e.session.date;
-          ogUp.appendChild(opt);
-        }
       }
       scheduleSelectEl.appendChild(ogUp);
 
@@ -1047,21 +1015,24 @@
       scheduleSelectEl.appendChild(ogPast);
 
       scheduleSelectEl.disabled =
-        !plan.upcomingEntries.length && !plan.pastEntries.length;
+        !collectFutureEntriesFromSheets(plan).length &&
+        !plan.pastEntries.length;
     }
 
     function renderUpcomingAll() {
-      if (!sessionPlan || !sessionPlan.upcomingEntries.length) {
+      if (!sessionPlan) {
+        renderSessions([], "読み込み中のデータがありません。");
+        return;
+      }
+      const entries = collectFutureEntriesFromSheets(sessionPlan);
+      if (!entries.length) {
         renderSessions(
           [],
           "今後の予定がありません。過去の月はプルダウンの「過去の日程」から選べます。",
         );
         return;
       }
-      const deduped = strictUpcomingEntriesForAllView(
-        sessionPlan.upcomingEntries,
-      );
-      renderSessions(annotateNearestAcrossMany(deduped));
+      renderSessions(annotateNearestAcrossMany(entries));
       scrollSessionsToStart();
     }
 
@@ -1088,17 +1059,6 @@
       scrollSessionsToStart();
     }
 
-    function renderSingleFromRef(ref) {
-      const parsed = parseSessionRef(ref);
-      if (!parsed) return;
-      const hit = findPlanEntry(parsed.sheetName, parsed.col);
-      if (!hit) return;
-      renderSessions(
-        annotateNearestSessions([hit.session], hit.sheetName),
-      );
-      scrollSessionsToStart();
-    }
-
     let scheduleSelectWired = false;
 
     function wireScheduleSelectOnce() {
@@ -1108,7 +1068,10 @@
       scheduleSelectEl.addEventListener("change", () => {
         const v = scheduleSelectEl.value;
         if (!v || v === "") {
-          if (sessionPlan && sessionPlan.upcomingEntries.length) {
+          if (
+            sessionPlan &&
+            collectFutureEntriesFromSheets(sessionPlan).length
+          ) {
             scheduleSelectEl.value = "__ALL__";
             renderUpcomingAll();
           } else {
@@ -1127,7 +1090,6 @@
           renderPastMonthSheet(v.slice(PAST_MONTH_PREFIX.length));
           return;
         }
-        renderSingleFromRef(v);
       });
     }
 
@@ -1153,7 +1115,7 @@
         }
         rebuildScheduleSelect(sessionPlan);
         wireScheduleSelectOnce();
-        if (sessionPlan.upcomingEntries.length) {
+        if (collectFutureEntriesFromSheets(sessionPlan).length) {
           scheduleSelectEl.value = "__ALL__";
           renderUpcomingAll();
         } else if (sessionPlan.pastEntries.length) {
