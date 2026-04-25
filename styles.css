@@ -121,8 +121,36 @@ select:focus {
   outline: none;
 }
 
-#schedule-select {
-  min-width: min(360px, 92vw);
+.controls__schedule-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.btn-refresh {
+  flex: 0 0 auto;
+  padding: 0.55rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+
+.btn-refresh:hover:not(:disabled),
+.btn-refresh:focus:not(:disabled) {
+  border-color: rgba(255, 107, 53, 0.45);
+  outline: none;
+}
+
+.btn-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .status {

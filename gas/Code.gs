@@ -15,6 +15,7 @@
  * エンドポイント:
  * - GET  ?sheet=YYYYMM  または ?sheet=参加者
  * - POST JSON: { "sheet": "202604" } または form: sheet=202604
+ * - GET  ?bundle=1&months=202604,202605&lookup=参加者 … 複数月＋参加者を1レスポンスで返す（高速化）
  */
 
 var SPREADSHEET_ID_FALLBACK = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
@@ -49,6 +50,9 @@ function doPost(e) {
 
 function handleRequest_(e) {
   try {
+    if (e && e.parameter && String(e.parameter.bundle || "") === "1") {
+      return handleBundleRequest_(e);
+    }
     var sheetName = extractSheetName_(e);
     assertAllowedSheetName_(sheetName);
     var sessions = buildSessionsForSheet_(sheetName);
@@ -64,6 +68,78 @@ function handleRequest_(e) {
       error: String(err && err.message ? err.message : err),
     });
   }
+}
+
+/**
+ * 複数月シートと参加者シートを1回で返す。
+ * GET: ?bundle=1&months=202604,202605&lookup=参加者
+ */
+function handleBundleRequest_(e) {
+  var monthsStr = "";
+  if (e.parameter && e.parameter.months) {
+    monthsStr = String(e.parameter.months);
+  }
+  if (!monthsStr && e.postData && e.postData.contents) {
+    try {
+      var data = JSON.parse(e.postData.contents);
+      if (data && data.months) {
+        monthsStr = Array.isArray(data.months)
+          ? data.months.join(",")
+          : String(data.months);
+      }
+    } catch (ignore) {}
+  }
+  if (!monthsStr) {
+    throw new Error(
+      "months が必要です（例: ?bundle=1&months=202604,202605&lookup=参加者）",
+    );
+  }
+  var lookupName = "参加者";
+  if (e.parameter && e.parameter.lookup) {
+    lookupName = String(e.parameter.lookup).trim() || lookupName;
+  }
+  assertAllowedSheetName_(lookupName);
+
+  var parts = monthsStr.split(",").map(function (x) {
+    return String(x).trim();
+  });
+  var months = [];
+  for (var i = 0; i < parts.length; i++) {
+    if (!parts[i]) continue;
+    assertAllowedSheetName_(parts[i]);
+    months.push(parts[i]);
+  }
+  if (!months.length) {
+    throw new Error("months に有効な YYYYMM がありません");
+  }
+
+  var sheets = {};
+  for (var j = 0; j < months.length; j++) {
+    var ym = months[j];
+    try {
+      sheets[ym] = buildSessionsForSheet_(ym);
+    } catch (err) {
+      sheets[ym] = [];
+    }
+  }
+
+  var lookupSessions = [];
+  try {
+    lookupSessions = buildSessionsForSheet_(lookupName);
+  } catch (err2) {
+    lookupSessions = [];
+  }
+
+  return jsonOutput_({
+    ok: true,
+    bundle: true,
+    layout: LAYOUT,
+    sheets: sheets,
+    lookup: {
+      sheet: lookupName,
+      sessions: lookupSessions,
+    },
+  });
 }
 
 function extractSheetName_(e) {
@@ -247,6 +323,9 @@ function buildSessionsForSheet_(sheetName) {
       slots: slots,
     });
   }
+  sessions.sort(function (a, b) {
+    return a.col - b.col;
+  });
   return sessions;
 }
 
