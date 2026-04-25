@@ -14,16 +14,16 @@
     <header>
       <div class="brand">
         <h1>NORTH PINE 参加者リスト</h1>
-        <p>シートを切り替えて各回の日程・場所・参加者を表示します。</p>
+        <p>今後の予定は日付順に並びます。過去の回は「過去の日程」から月別に選べます。</p>
       </div>
       <div class="controls controls-row">
         <div class="controls__group">
           <label for="sheet-select-upcoming">今後の予定</label>
-          <select id="sheet-select-upcoming" aria-label="今後の予定の月シートを選択"></select>
+          <select id="sheet-select-upcoming" aria-label="本日以降の開催日を選択"></select>
         </div>
         <div class="controls__group">
-          <label for="sheet-select-past">過去の月</label>
-          <select id="sheet-select-past" aria-label="過去の月シートを選択"></select>
+          <label for="sheet-select-past">過去の日程</label>
+          <select id="sheet-select-past" aria-label="過去の開催日を月別に選択"></select>
         </div>
       </div>
     </header>
@@ -62,6 +62,9 @@
      */
     const SHEET_PROBE_FUTURE_MONTHS = 24;
 
+    /** 日程プラン構築時に同時取得する月シート数（多すぎると GAS に負荷） */
+    const SHEET_FETCH_CONCURRENCY = 5;
+
     /** シート一覧のキャッシュ（ミリ秒） */
     const SHEET_LIST_CACHE_MS = 60 * 60 * 1000;
 
@@ -78,14 +81,6 @@
         }
       }
       return out;
-    }
-
-    /** ローカル日付の「今月」を YYYYMM 6 桁で返す */
-    function currentYmSix() {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth() + 1;
-      return `${y}${String(m).padStart(2, "0")}`;
     }
 
     /** プローブ開始月から「今月＋未来 N ヶ月」までの YYYYMM 候補（202605 なども含む） */
@@ -105,24 +100,6 @@
         endY,
         endM,
       );
-    }
-
-    /**
-     * 発見した月シート一覧を、「今月」基準で分割する。
-     * ym >= 今月 → 今後の予定（本日を含む当月以降）、それより前 → 過去の月。
-     */
-    function splitMonthSheetsByCurrentMonth(sheetIds) {
-      const cur = currentYmSix();
-      const past = [];
-      const upcoming = [];
-      for (const ym of sheetIds) {
-        if (!/^\d{6}$/.test(ym)) continue;
-        if (ym >= cur) upcoming.push(ym);
-        else past.push(ym);
-      }
-      past.sort((a, b) => b.localeCompare(a));
-      upcoming.sort((a, b) => a.localeCompare(b));
-      return { past, upcoming };
     }
 
     function csvLooksValid(text) {
@@ -149,7 +126,7 @@
     }
 
     async function discoverMonthSheets() {
-      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v4`;
+      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v5`;
       try {
         const raw = sessionStorage.getItem(cacheKey);
         if (raw) {
@@ -396,6 +373,33 @@
       return sessions.map((s) => ({
         ...s,
         highlightNext: sessionHitsTargetDay(s, targetDay, ymSix),
+      }));
+    }
+
+    /**
+     * 複数月シートにまたがる「今後の予定」一覧用。
+     * 本日を含む列、なければ全体で最も近い未来日の列を強調する。
+     */
+    function annotateNearestAcrossMany(entries) {
+      if (!entries || !entries.length) return [];
+      const today = startOfLocalDay(new Date());
+      let targetDay = null;
+      const onToday = entries.filter((e) =>
+        sessionHitsTargetDay(e.session, today, e.sheetName),
+      );
+      if (onToday.length) {
+        targetDay = today;
+      } else {
+        const fut = entries
+          .filter((e) => e.dt && startOfLocalDay(e.dt) >= today)
+          .sort((a, b) => a.dt - b.dt);
+        if (fut.length) targetDay = startOfLocalDay(fut[0].dt);
+      }
+      return entries.map((e) => ({
+        ...e.session,
+        highlightNext: targetDay
+          ? sessionHitsTargetDay(e.session, targetDay, e.sheetName)
+          : false,
       }));
     }
 
@@ -704,8 +708,12 @@
 
     const statusEl = document.getElementById("status");
     const sessionsEl = document.getElementById("sessions");
+    const sessionsScrollEl = document.querySelector(".sessions-scroll");
     const selectPastEl = document.getElementById("sheet-select-past");
     const selectUpcomingEl = document.getElementById("sheet-select-upcoming");
+
+    /** 全月シート読み込み後の { sheetName, session, dt } プラン */
+    let sessionPlan = null;
 
     function setStatus(kind, message) {
       statusEl.className = "status is-visible";
@@ -717,11 +725,15 @@
       }
     }
 
-    function renderSessions(sessions) {
+    function renderSessions(sessions, emptyHint) {
       sessionsEl.innerHTML = "";
       if (!sessions.length) {
-        sessionsEl.innerHTML =
-          '<p class="empty-sheet">日付の入っている列がありません。LAYOUT の行番号をスプレッドシートに合わせて調整してください。</p>';
+        const p = document.createElement("p");
+        p.className = "empty-sheet";
+        p.textContent =
+          emptyHint ||
+          "日付の入っている列がありません。LAYOUT の行番号をスプレッドシートに合わせて調整してください。";
+        sessionsEl.appendChild(p);
         return;
       }
 
@@ -807,127 +819,233 @@
       }
     }
 
-    async function loadSheet(sheetName) {
-      setStatus("loading", "読み込み中…");
-      sessionsEl.innerHTML = "";
-
-      try {
-        const useGas = Boolean(gasWebAppBase());
-        let sessions = null;
-        let lookupSessions = null;
-
-        if (useGas) {
-          const [mainG, lookupG] = await Promise.all([
-            fetchSessionsViaGas(sheetName),
-            fetchSessionsViaGas(LOOKUP_SHEET_NAME),
-          ]);
-          sessions = mainG;
-          lookupSessions = lookupG;
-          if (!sessions) {
-            sessions = await fetchSessionsViaGasPost(sheetName);
-          }
-          if (!lookupSessions) {
-            lookupSessions = await fetchSessionsViaGasPost(LOOKUP_SHEET_NAME);
-          }
-        }
-
-        if (!sessions) {
-          const mainText = await fetchSheetText(sheetName);
-          if (!mainText) {
-            throw new Error("main sheet empty or invalid");
-          }
-          const mainRows = parseCSV(mainText);
-          sessions = buildSessions(mainRows);
-        }
-
+    async function fetchLookupSessionsOnce() {
+      const useGas = Boolean(gasWebAppBase());
+      let lookupSessions = null;
+      if (useGas) {
+        lookupSessions = await fetchSessionsViaGas(LOOKUP_SHEET_NAME);
         if (!lookupSessions) {
-          const lookupText = await fetchSheetText(LOOKUP_SHEET_NAME);
-          if (lookupText) {
-            const lookupRows = parseCSV(lookupText);
-            lookupSessions = buildSessions(lookupRows);
-          }
+          lookupSessions = await fetchSessionsViaGasPost(LOOKUP_SHEET_NAME);
         }
-
-        if (lookupSessions && lookupSessions.length) {
-          sessions = mergeSessionsFromLookup(sessions, lookupSessions);
-        }
-
-        sessions = annotateNearestSessions(sessions, sheetName);
-
-        setStatus("hidden", "");
-        renderSessions(sessions);
-      } catch (e) {
-        setStatus(
-          "error",
-          `「${sheetName}」の取得に失敗しました。シート名・共有設定・ネットワークを確認してください。`,
-        );
-        console.error(e);
       }
+      if (!lookupSessions) {
+        const lookupText = await fetchSheetText(LOOKUP_SHEET_NAME);
+        if (lookupText && csvLooksValid(lookupText)) {
+          lookupSessions = buildSessions(parseCSV(lookupText));
+        }
+      }
+      return lookupSessions && lookupSessions.length ? lookupSessions : null;
+    }
+
+    /** 1 枚の月シートのセッション（参加者シートとマージ済み・シート内の強調付き） */
+    async function fetchMergedSessionsForSheet(sheetName, lookupSessions) {
+      const useGas = Boolean(gasWebAppBase());
+      let sessions = null;
+      if (useGas) {
+        sessions = await fetchSessionsViaGas(sheetName);
+        if (!sessions) sessions = await fetchSessionsViaGasPost(sheetName);
+      }
+      if (!sessions) {
+        const mainText = await fetchSheetText(sheetName);
+        if (!mainText || !csvLooksValid(mainText)) return [];
+        sessions = buildSessions(parseCSV(mainText));
+      }
+      if (lookupSessions && lookupSessions.length) {
+        sessions = mergeSessionsFromLookup(sessions, lookupSessions);
+      }
+      return annotateNearestSessions(sessions, sheetName);
+    }
+
+    /** `YYYYMM:列番号` → { sheetName, col } */
+    function parseSessionRef(val) {
+      const s = String(val || "");
+      const i = s.lastIndexOf(":");
+      if (i <= 0) return null;
+      const sheetName = s.slice(0, i);
+      const col = parseInt(s.slice(i + 1), 10);
+      if (!/^\d{6}$/.test(sheetName) || !Number.isFinite(col)) return null;
+      return { sheetName, col };
+    }
+
+    function findPlanEntry(sheetName, col) {
+      if (!sessionPlan || !sessionPlan.allEntries) return null;
+      return (
+        sessionPlan.allEntries.find(
+          (e) => e.sheetName === sheetName && e.session.col === col,
+        ) || null
+      );
+    }
+
+    function scrollSessionsToStart() {
+      if (sessionsScrollEl) sessionsScrollEl.scrollLeft = 0;
     }
 
     /**
-     * 過去／今後の2プルダウンを埋める。
-     * 先頭に value="" の「—」を置き、どちらか一方だけ選択する想定。
+     * 発見済みの全 YYYYMM シートを読み、日付で過去／今後に分ける。
      */
-    function fillMonthSelects(pastIds, upcomingIds) {
-      function fill(selectEl, ids, withBlank) {
-        selectEl.innerHTML = "";
-        if (!ids.length) {
-          const opt = document.createElement("option");
-          opt.value = "";
-          opt.textContent = "（該当なし）";
-          opt.disabled = true;
-          selectEl.appendChild(opt);
-          selectEl.disabled = true;
-          return;
-        }
-        selectEl.disabled = false;
-        if (withBlank) {
-          const b = document.createElement("option");
-          b.value = "";
-          b.textContent = "—";
-          selectEl.appendChild(b);
-        }
-        for (const name of ids) {
-          const opt = document.createElement("option");
-          opt.value = name;
-          opt.textContent = formatSheetLabel(name);
-          selectEl.appendChild(opt);
+    async function buildSessionPlan(sheetIds) {
+      const lookupSessions = await fetchLookupSessionsOnce();
+      const allEntries = [];
+      for (let i = 0; i < sheetIds.length; i += SHEET_FETCH_CONCURRENCY) {
+        const chunk = sheetIds.slice(i, i + SHEET_FETCH_CONCURRENCY);
+        const parts = await Promise.all(
+          chunk.map((sheetName) =>
+            fetchMergedSessionsForSheet(sheetName, lookupSessions).then(
+              (sessions) => ({ sheetName, sessions }),
+            ),
+          ),
+        );
+        for (const { sheetName, sessions } of parts) {
+          for (const s of sessions || []) {
+            const dt = parseSessionDateFromCell(s.date, sheetName);
+            if (!dt) continue;
+            allEntries.push({ sheetName, session: s, dt });
+          }
         }
       }
 
-      const bothKinds = pastIds.length && upcomingIds.length;
-      fill(selectPastEl, pastIds, bothKinds);
-      fill(selectUpcomingEl, upcomingIds, bothKinds);
+      const today = startOfLocalDay(new Date());
+      const pastEntries = [];
+      const upcomingEntries = [];
+      for (const e of allEntries) {
+        const d0 = startOfLocalDay(e.dt);
+        if (d0 < today) pastEntries.push(e);
+        else upcomingEntries.push(e);
+      }
+      upcomingEntries.sort(
+        (a, b) => a.dt - b.dt || a.session.col - b.session.col,
+      );
+      pastEntries.sort((a, b) => b.dt - a.dt);
+
+      return { lookupSessions, allEntries, pastEntries, upcomingEntries };
     }
 
-    function wireSheetSelects() {
-      const onChange = (source) => {
-        const pv = selectPastEl.value;
-        const uv = selectUpcomingEl.value;
-        if (source === "past" && pv) {
-          if (selectUpcomingEl.options.length && !selectUpcomingEl.disabled) {
-            selectUpcomingEl.value = "";
+    function rebuildSessionSelects(plan) {
+      selectUpcomingEl.innerHTML = "";
+      const upPlaceholder = document.createElement("option");
+      upPlaceholder.value = "";
+      upPlaceholder.textContent = "—";
+      selectUpcomingEl.appendChild(upPlaceholder);
+
+      if (!plan.upcomingEntries.length) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "（今後の予定なし）";
+        o.disabled = true;
+        selectUpcomingEl.appendChild(o);
+        selectUpcomingEl.disabled = true;
+      } else {
+        selectUpcomingEl.disabled = false;
+        const allOpt = document.createElement("option");
+        allOpt.value = "__ALL__";
+        allOpt.textContent = "すべて表示（日付順）";
+        selectUpcomingEl.appendChild(allOpt);
+        for (const e of plan.upcomingEntries) {
+          const opt = document.createElement("option");
+          opt.value = `${e.sheetName}:${e.session.col}`;
+          opt.textContent = e.session.date;
+          selectUpcomingEl.appendChild(opt);
+        }
+      }
+
+      selectPastEl.innerHTML = "";
+      const pastPlaceholder = document.createElement("option");
+      pastPlaceholder.value = "";
+      pastPlaceholder.textContent = "—";
+      selectPastEl.appendChild(pastPlaceholder);
+
+      if (!plan.pastEntries.length) {
+        const o = document.createElement("option");
+        o.value = "";
+        o.textContent = "（過去の日程なし）";
+        o.disabled = true;
+        selectPastEl.appendChild(o);
+        selectPastEl.disabled = true;
+      } else {
+        selectPastEl.disabled = false;
+        const bySheet = new Map();
+        for (const e of plan.pastEntries) {
+          if (!bySheet.has(e.sheetName)) bySheet.set(e.sheetName, []);
+          bySheet.get(e.sheetName).push(e);
+        }
+        const sheetOrder = [...bySheet.keys()].sort((a, b) =>
+          b.localeCompare(a),
+        );
+        for (const sh of sheetOrder) {
+          const og = document.createElement("optgroup");
+          og.label = formatSheetLabel(sh);
+          const rows = bySheet
+            .get(sh)
+            .slice()
+            .sort((a, b) => b.dt - a.dt);
+          for (const e of rows) {
+            const opt = document.createElement("option");
+            opt.value = `${e.sheetName}:${e.session.col}`;
+            opt.textContent = e.session.date;
+            og.appendChild(opt);
           }
-          loadSheet(pv);
+          selectPastEl.appendChild(og);
+        }
+      }
+    }
+
+    function renderUpcomingAll() {
+      if (!sessionPlan || !sessionPlan.upcomingEntries.length) {
+        renderSessions(
+          [],
+          "今後の予定がありません。過去の日程は右のプルダウンから選べます。",
+        );
+        return;
+      }
+      renderSessions(annotateNearestAcrossMany(sessionPlan.upcomingEntries));
+      scrollSessionsToStart();
+    }
+
+    function renderSingleFromRef(ref) {
+      const parsed = parseSessionRef(ref);
+      if (!parsed) return;
+      const hit = findPlanEntry(parsed.sheetName, parsed.col);
+      if (!hit) return;
+      renderSessions(
+        annotateNearestSessions([hit.session], hit.sheetName),
+      );
+      scrollSessionsToStart();
+    }
+
+    let sheetSelectsWired = false;
+
+    function wireSheetSelectsOnce() {
+      if (sheetSelectsWired) return;
+      sheetSelectsWired = true;
+
+      selectPastEl.addEventListener("change", () => {
+        const pv = selectPastEl.value;
+        if (!pv) {
+          if (sessionPlan && sessionPlan.upcomingEntries.length) {
+            selectUpcomingEl.value = "__ALL__";
+            renderUpcomingAll();
+          } else {
+            renderSessions(
+              [],
+              "今後の予定がありません。過去の日程は右のプルダウンから選べます。",
+            );
+          }
           return;
         }
-        if (source === "upcoming" && uv) {
-          if (selectPastEl.options.length && !selectPastEl.disabled) {
-            selectPastEl.value = "";
-          }
-          loadSheet(uv);
-        }
-      };
-      selectPastEl.addEventListener("change", () => onChange("past"));
-      selectUpcomingEl.addEventListener("change", () => onChange("upcoming"));
-    }
+        if (!selectUpcomingEl.disabled) selectUpcomingEl.value = "";
+        renderSingleFromRef(pv);
+      });
 
-    /** 初期表示で選ぶシート名（今後があれば最も近い月、なければ直近の過去） */
-    function pickDefaultSheet(pastIds, upcomingIds) {
-      if (upcomingIds.length) return upcomingIds[0];
-      if (pastIds.length) return pastIds[0];
-      return "";
+      selectUpcomingEl.addEventListener("change", () => {
+        const uv = selectUpcomingEl.value;
+        if (!selectPastEl.disabled) selectPastEl.value = "";
+        if (!uv || uv === "") return;
+        if (uv === "__ALL__") {
+          renderUpcomingAll();
+          return;
+        }
+        renderSingleFromRef(uv);
+      });
     }
 
     async function bootstrap() {
@@ -941,21 +1059,29 @@
           );
           return;
         }
-        const { past, upcoming } = splitMonthSheetsByCurrentMonth(list);
-        fillMonthSelects(past, upcoming);
-        wireSheetSelects();
-        const defaultName = pickDefaultSheet(past, upcoming);
-        if (!defaultName) {
-          setStatus("error", "表示できる月シートがありません。");
+        setStatus("loading", "各月の日程・参加者を読み込み中…");
+        sessionPlan = await buildSessionPlan(list);
+        if (!sessionPlan.allEntries.length) {
+          setStatus(
+            "error",
+            "日付として解釈できる列がありません。日付セルの形式を確認してください。",
+          );
           return;
         }
-        if (upcoming.length) {
-          selectUpcomingEl.value = defaultName;
+        rebuildSessionSelects(sessionPlan);
+        wireSheetSelectsOnce();
+        selectPastEl.value = "";
+        if (sessionPlan.upcomingEntries.length) {
+          selectUpcomingEl.value = "__ALL__";
+          renderUpcomingAll();
         } else {
-          selectPastEl.value = defaultName;
+          selectUpcomingEl.value = "";
+          renderSessions(
+            [],
+            "今後の予定がありません。過去の日程は右のプルダウンから選べます。",
+          );
         }
         setStatus("hidden", "");
-        await loadSheet(defaultName);
       } catch (e) {
         setStatus("error", "初期化に失敗しました。ネットワークを確認してください。");
         console.error(e);
