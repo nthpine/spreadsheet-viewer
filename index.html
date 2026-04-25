@@ -33,18 +33,12 @@
       <div id="sessions" class="sessions"></div>
     </div>
 
-    <footer>データは Google スプレッドシートの公開 CSV、または GAS ウェブアプリ経由で取得しています。</footer>
+    <footer>データは Google スプレッドシートの公開 CSV（export / gviz）で取得しています。</footer>
   </div>
 
   <script>
-    /** スプレッドシート ID（GAS 時は左から1〜2枚目のシート。GAS なし時は YYYYMM 名シートを探索） */
+    /** スプレッドシート ID */
     const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
-
-    /**
-     * GAS ウェブアプリの URL（末尾の /exec まで）。
-     * gas/Code.gs をデプロイしたあとに貼る。空のままなら従来どおり CSV のみ（背景色は使わない）。
-     */
-    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbgdkzodm824U8bppBN4o-Ib5EcyTEOfye41vb_6ev3h-pFlvjCyJvcR-JhOZosiqz/exec";
 
     /**
      * 月次シートのほかに参照するシート名（過去回の名前など）。
@@ -53,18 +47,27 @@
     const LOOKUP_SHEET_NAME = "参加者";
 
     /**
+     * 左から1枚目のシート gid（シートを開いたときの URL の gid=。先頭タブは多くの場合 0）
+     */
+    const CSV_TAB1_GID = 0;
+    /**
+     * 本日が 23 日以降に読む 2 枚目の gid。空のままなら 2 枚目は取得しない（URL の gid= の数値を貼る）
+     */
+    const CSV_TAB2_GID = "";
+
+    /**
      * ローカル日付の「今月」から、最大何ヶ月先まで YYYYMM シートの存在確認をするか。
      * 過去月はプローブしない。
      */
     const SHEET_PROBE_FUTURE_MONTHS = 24;
 
-    /** 日程プラン構築時に同時取得する月シート数（多すぎると GAS に負荷） */
+    /** 日程プラン構築時に同時取得する月シート数（多すぎるとブラウザ・スプレッドシート側に負荷） */
     const SHEET_FETCH_CONCURRENCY = 5;
 
     /** シート一覧のキャッシュ（ミリ秒） */
     const SHEET_LIST_CACHE_MS = 60 * 60 * 1000;
 
-    /** GAS bundle 応答の IndexedDB キャッシュ TTL */
+    /** タブ CSV まとめ取得の IndexedDB キャッシュ TTL */
     const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
     const BUNDLE_IDB_NAME = "north-pine-viewer";
     const BUNDLE_IDB_STORE = "gasBundle";
@@ -125,6 +128,18 @@
 
     async function fetchSheetText(sheetName) {
       const res = await fetch(csvUrl(sheetName));
+      if (!res.ok) return null;
+      const text = await res.text();
+      if (!csvLooksValid(text)) return null;
+      return text;
+    }
+
+    /** 公開エクスポート CSV（gid はシート URL の gid=） */
+    async function fetchSheetTextByGid(gid) {
+      const g = String(gid);
+      if (!/^\d+$/.test(g)) return null;
+      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(g)}`;
+      const res = await fetch(url);
       if (!res.ok) return null;
       const text = await res.text();
       if (!csvLooksValid(text)) return null;
@@ -198,52 +213,6 @@
         sheet: sheetName,
       });
       return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?${q}`;
-    }
-
-    function gasWebAppBase() {
-      const u = String(GAS_WEB_APP_URL || "").trim();
-      if (!u) return "";
-      return u.replace(/\/$/, "");
-    }
-
-    /**
-     * GAS から { sessions } を取得（セル背景で初参加フラグ付き）。
-     * URL 未設定・失敗時は null。
-     */
-    async function fetchSessionsViaGas(sheetName) {
-      const base = gasWebAppBase();
-      if (!base) return null;
-      const url = `${base}?sheet=${encodeURIComponent(sheetName)}`;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const j = await res.json();
-        if (!j || j.ok !== true || !Array.isArray(j.sessions)) return null;
-        return normalizeGasSessions(j.sessions);
-      } catch (err) {
-        console.warn("GAS fetch failed", err);
-        return null;
-      }
-    }
-
-    /** POST でも同じ API を叩ける（CORS で失敗する環境向けに GET を優先） */
-    async function fetchSessionsViaGasPost(sheetName) {
-      const base = gasWebAppBase();
-      if (!base) return null;
-      try {
-        const res = await fetch(base, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sheet: sheetName }),
-        });
-        if (!res.ok) return null;
-        const j = await res.json();
-        if (!j || j.ok !== true || !Array.isArray(j.sessions)) return null;
-        return normalizeGasSessions(j.sessions);
-      } catch (err) {
-        console.warn("GAS POST failed", err);
-        return null;
-      }
     }
 
     function normalizeGasSessions(raw) {
@@ -735,36 +704,17 @@
     }
 
     async function fetchLookupSessionsOnce() {
-      const useGas = Boolean(gasWebAppBase());
-      let lookupSessions = null;
-      if (useGas) {
-        lookupSessions = await fetchSessionsViaGas(LOOKUP_SHEET_NAME);
-        if (!lookupSessions) {
-          lookupSessions = await fetchSessionsViaGasPost(LOOKUP_SHEET_NAME);
-        }
-      }
-      if (!lookupSessions) {
-        const lookupText = await fetchSheetText(LOOKUP_SHEET_NAME);
-        if (lookupText && csvLooksValid(lookupText)) {
-          lookupSessions = buildSessions(parseCSV(lookupText));
-        }
-      }
+      const lookupText = await fetchSheetText(LOOKUP_SHEET_NAME);
+      if (!lookupText || !csvLooksValid(lookupText)) return null;
+      const lookupSessions = buildSessions(parseCSV(lookupText));
       return lookupSessions && lookupSessions.length ? lookupSessions : null;
     }
 
-    /** 1 枚の月シートのセッション（参加者シートとマージ済み・シート内の強調付き） */
+    /** 1 枚の月シートのセッション（参加者シートとマージ済み） */
     async function fetchMergedSessionsForSheet(sheetName, lookupSessions) {
-      const useGas = Boolean(gasWebAppBase());
-      let sessions = null;
-      if (useGas) {
-        sessions = await fetchSessionsViaGas(sheetName);
-        if (!sessions) sessions = await fetchSessionsViaGasPost(sheetName);
-      }
-      if (!sessions) {
-        const mainText = await fetchSheetText(sheetName);
-        if (!mainText || !csvLooksValid(mainText)) return [];
-        sessions = buildSessions(parseCSV(mainText));
-      }
+      const mainText = await fetchSheetText(sheetName);
+      if (!mainText || !csvLooksValid(mainText)) return [];
+      let sessions = buildSessions(parseCSV(mainText));
       if (lookupSessions && lookupSessions.length) {
         sessions = mergeSessionsFromLookup(sessions, lookupSessions);
       }
@@ -775,15 +725,12 @@
       if (sessionsScrollEl) sessionsScrollEl.scrollLeft = 0;
     }
 
-    function bundleCacheKey(sheetIds) {
-      return `bundle_${SPREADSHEET_ID}_${[...sheetIds].sort().join(",")}`;
-    }
-
-    /** タブ順バンドル用 IndexedDB キー（日付と 1/2 枚で無効化） */
+    /** タブ CSV 用 IndexedDB キー（日付・1/2枚・gid 設定で無効化） */
     function bundleTabCacheKey(includeSecond) {
       const d = new Date();
       const day = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-      return `bundle_tabs_${SPREADSHEET_ID}_${day}_${includeSecond ? "2" : "1"}`;
+      const g2 = String(CSV_TAB2_GID || "").trim();
+      return `bundle_tabs_${SPREADSHEET_ID}_${day}_${includeSecond ? "2" : "1"}_${CSV_TAB1_GID}_${g2}`;
     }
 
     function openBundleIdb_() {
@@ -850,93 +797,55 @@
       }
     }
 
-    /** GAS: 左から1番目（＋本日が23日以降なら2番目）＋参加者 */
-    async function fetchTabBundleFromGas(includeSecond) {
-      const base = gasWebAppBase();
-      if (!base) return null;
-      const q = `bundle=1&tabs=1&includeSecond=${includeSecond ? "1" : "0"}&lookup=${encodeURIComponent(LOOKUP_SHEET_NAME)}`;
-      const url = `${base}?${q}`;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const j = await res.json();
-        if (
-          !j ||
-          j.ok !== true ||
-          !j.bundle ||
-          !j.tabMode ||
-          !Array.isArray(j.sheets)
-        ) {
-          return null;
-        }
-        return j;
-      } catch (err) {
-        console.warn("tab bundle fetch failed", err);
-        return null;
-      }
-    }
+    /**
+     * export CSV で 1 枚目（必須）＋条件付き 2 枚目と参加者シートを取得し、既存の tab bundle 組み立て用 JSON にする。
+     */
+    async function fetchCsvTabBundleJson(includeSecond) {
+      const gid1 = Number(CSV_TAB1_GID);
+      if (!Number.isFinite(gid1)) return null;
+      const gid2Str = String(CSV_TAB2_GID || "").trim();
+      const gid2Parsed = gid2Str === "" ? NaN : Number(gid2Str);
+      const wantSecond =
+        includeSecond &&
+        gid2Str !== "" &&
+        Number.isFinite(gid2Parsed);
 
-    /** GAS bundle API（1 リクエストで複数月＋参加者） */
-    async function fetchSessionBundleFromGas(monthSheetIds) {
-      const base = gasWebAppBase();
-      if (!base || !monthSheetIds.length) return null;
-      const months = monthSheetIds.join(",");
-      const url = `${base}?bundle=1&months=${encodeURIComponent(months)}&lookup=${encodeURIComponent(LOOKUP_SHEET_NAME)}`;
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const j = await res.json();
-        if (
-          !j ||
-          j.ok !== true ||
-          !j.bundle ||
-          !j.sheets ||
-          Array.isArray(j.sheets)
-        ) {
-          return null;
-        }
-        return j;
-      } catch (err) {
-        console.warn("bundle fetch failed", err);
-        return null;
-      }
-    }
+      const p1 = fetchSheetTextByGid(String(gid1));
+      const pLookup = fetchSheetText(LOOKUP_SHEET_NAME);
+      const p2 = wantSecond
+        ? fetchSheetTextByGid(String(gid2Parsed))
+        : Promise.resolve(null);
+      const [t1, lookupText, t2] = await Promise.all([p1, pLookup, p2]);
 
-    /** bundle JSON → sessionPlan 相当（マージ・妥当性チェック済み Map） */
-    function buildSessionPlanFromBundlePayload(j) {
-      const lookupRaw = (j.lookup && j.lookup.sessions) || [];
-      const lookupSessions = lookupRaw.length
-        ? normalizeGasSessions(lookupRaw)
-        : null;
-      const allEntries = [];
-      const sessionsBySheet = new Map();
-      const sheetNames = Object.keys(j.sheets || {})
-        .filter((n) => /^\d{6}$/.test(n))
-        .sort((a, b) => a.localeCompare(b));
-      for (const sheetName of sheetNames) {
-        let list = normalizeGasSessions(j.sheets[sheetName] || []);
-        if (lookupSessions && lookupSessions.length) {
-          list = mergeSessionsFromLookup(list, lookupSessions);
-        }
-        list = [...list].sort((a, b) => Number(a.col) - Number(b.col));
-        list = filterSessionsFromTodayOnward(list, sheetName);
-        if (!list.length) continue;
-        if (!sessionsPlausibleForSheet(list, sheetName)) continue;
-        sessionsBySheet.set(sheetName, list);
-        const seenColInSheet = new Set();
-        for (const s of list) {
-          const dt = parseSessionDateFromCell(s.date, sheetName);
-          if (!dt) continue;
-          const colKey = `${sheetName}:${s.col}`;
-          if (seenColInSheet.has(colKey)) continue;
-          seenColInSheet.add(colKey);
-          allEntries.push({ sheetName, session: s, dt });
-        }
+      let lookupSessions = [];
+      if (lookupText && csvLooksValid(lookupText)) {
+        lookupSessions = buildSessions(parseCSV(lookupText));
       }
+
+      const sheets = [];
+      if (t1 && csvLooksValid(t1)) {
+        sheets.push({
+          tabIndex: 0,
+          sessions: buildSessions(parseCSV(t1)),
+        });
+      }
+      if (wantSecond && t2 && csvLooksValid(t2)) {
+        sheets.push({
+          tabIndex: 1,
+          sessions: buildSessions(parseCSV(t2)),
+        });
+      }
+      if (!sheets.length) return null;
+
       return {
-        lookupSessions,
-        allEntries,
-        sessionsBySheet,
+        ok: true,
+        bundle: true,
+        tabMode: true,
+        sheets,
+        lookup: {
+          sheet: LOOKUP_SHEET_NAME,
+          sessions: lookupSessions,
+        },
       };
     }
 
@@ -992,7 +901,7 @@
         const fromCache = buildSessionPlanFromTabBundlePayload(cached);
         if (fromCache.sessionsBySheet.size) return fromCache;
       }
-      const json = await fetchTabBundleFromGas(includeSecond);
+      const json = await fetchCsvTabBundleJson(includeSecond);
       if (!json) return null;
       await writeBundleCache(cacheKey, json);
       return buildSessionPlanFromTabBundlePayload(json);
@@ -1104,30 +1013,9 @@
     }
 
     /**
-     * 指定した YYYYMM シートだけ取得。
-     * GAS 利用時は bundle API＋IndexedDB キャッシュを優先し、失敗時のみ従来の逐次取得。
+     * 指定した YYYYMM シートだけ取得（gviz CSV、参加者とマージ）。
      */
     async function buildSessionPlan(sheetIds) {
-      const useGas = Boolean(gasWebAppBase());
-      if (useGas && sheetIds.length) {
-        const cacheKey = bundleCacheKey(sheetIds);
-        const cached = await readBundleCache(cacheKey);
-        if (cached) {
-          const fromCache = buildSessionPlanFromBundlePayload(cached);
-          if (fromCache.sessionsBySheet.size) {
-            return fromCache;
-          }
-        }
-        const bundleJson = await fetchSessionBundleFromGas(sheetIds);
-        if (bundleJson) {
-          await writeBundleCache(cacheKey, bundleJson);
-          const fromBundle = buildSessionPlanFromBundlePayload(bundleJson);
-          if (fromBundle.sessionsBySheet.size) {
-            return fromBundle;
-          }
-        }
-      }
-
       const lookupSessions = await fetchLookupSessionsOnce();
       const allEntries = [];
       const sessionsBySheet = new Map();
@@ -1206,22 +1094,20 @@
     }
 
     async function initializeFromSpreadsheet() {
-      if (gasWebAppBase()) {
-        const includeSecond = new Date().getDate() >= 23;
-        setStatus(
-          "loading",
-          includeSecond
-            ? "スプレッドシートの1番目・2番目のシートを読み込み中…"
-            : "スプレッドシートの1番目のシートを読み込み中…",
-        );
-        const tabPlan = await tryBuildSessionPlanFromTabs(includeSecond);
-        if (tabPlan && tabPlan.sessionsBySheet.size) {
-          sessionPlan = tabPlan;
-          wireRefreshBundleOnce();
-          renderUpcomingAll();
-          setStatus("hidden", "");
-          return;
-        }
+      const includeSecond = new Date().getDate() >= 23;
+      setStatus(
+        "loading",
+        includeSecond && String(CSV_TAB2_GID || "").trim() !== ""
+          ? "スプレッドシートの1番目・2番目のシートを読み込み中…"
+          : "スプレッドシートの1番目のシートを読み込み中…",
+      );
+      const tabPlan = await tryBuildSessionPlanFromTabs(includeSecond);
+      if (tabPlan && tabPlan.sessionsBySheet.size) {
+        sessionPlan = tabPlan;
+        wireRefreshBundleOnce();
+        renderUpcomingAll();
+        setStatus("hidden", "");
+        return;
       }
 
       const list = await discoverMonthSheets();
@@ -1237,12 +1123,7 @@
         .filter((ym) => /^\d{6}$/.test(ym) && ym >= cur)
         .sort((a, b) => a.localeCompare(b));
 
-      setStatus(
-        "loading",
-        gasWebAppBase()
-          ? "今月以降のデータを読み込み中…"
-          : "今月以降のシートを読み込み中…",
-      );
+      setStatus("loading", "今月以降のシートを読み込み中…");
       sessionPlan = await buildSessionPlan(toFetch);
 
       if (
@@ -1261,12 +1142,7 @@
     }
 
     async function bootstrap() {
-      setStatus(
-        "loading",
-        gasWebAppBase()
-          ? "スプレッドシートに接続中…"
-          : "スプレッドシート上のシートを確認中…",
-      );
+      setStatus("loading", "スプレッドシートから読み込み中…");
       try {
         await initializeFromSpreadsheet();
       } catch (e) {

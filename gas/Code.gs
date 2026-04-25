@@ -1,5 +1,6 @@
 /**
- * NORTH PINE 参加者ビュー用 Web API
+ * NORTH PINE 参加者ビュー用 Web API（レガシー）。
+ * 現在の index.html は公開 CSV / gviz のみで取得しており、本スクリプトは参照しない。
  *
  * デプロイ手順（概要）:
  * 1. このスプレッドシートに紐づく Apps Script エディタで本ファイルを貼り付ける。
