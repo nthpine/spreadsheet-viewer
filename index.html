@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>バスケ参加者 · スプレッドシート</title>
+  <title>NORTH PINE</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,8 +13,8 @@
   <div class="wrap">
     <header>
       <div class="brand">
-        <h1>バスケ参加者</h1>
-        <p>シート（YYYYMM）を切り替えて各回の日程・場所・参加者を表示します。</p>
+        <h1>NORTH PINE 参加者リスト</h1>
+        <p>シートを切り替えて各回の日程・場所・参加者を表示します。</p>
       </div>
       <div class="controls">
         <label for="sheet-select">表示する月</label>
@@ -36,12 +36,27 @@
      * 「参加者」など別シートはここに含めなければ表示されません。
      */
     const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
-    const SHEET_NAMES = [
-      "202604",
-      "202603",
-      "202602",
-      "202601",
-    ];
+
+    /** プルダウンに出す YYYYMM（2025年・2026年を同じ形式で列挙） */
+    function sheetNamesRange(fromYear, fromMonth, toYear, toMonth) {
+      const out = [];
+      let y = fromYear;
+      let m = fromMonth;
+      while (y < toYear || (y === toYear && m <= toMonth)) {
+        out.push(`${y}${String(m).padStart(2, "0")}`);
+        m += 1;
+        if (m > 12) {
+          m = 1;
+          y += 1;
+        }
+      }
+      return out;
+    }
+
+    const SHEET_NAMES = sheetNamesRange(2025, 1, 2026, 12);
+
+    /** 参加者は最大この人数ぶんの行を表示（空枠で埋める） */
+    const MAX_PARTICIPANTS = 15;
 
     /**
      * シート上の行番号（1始まり）。
@@ -139,8 +154,69 @@
       return String(v).trim();
     }
 
+    function isSessionCountLabel(s) {
+      return s === "開催回数" || s.startsWith("開催回数");
+    }
+
     /**
-     * 列ごとに { date, place, names } を組み立てる。
+     * シート上のメモ用表記を検出し、初参加なら強調用フラグを付ける。
+     * 表示からは（初）などの装飾だけ除き、名前本体は残す。
+     */
+    function parseParticipantCell(raw) {
+      if (!raw) {
+        return { display: "", isFirst: false };
+      }
+      let t = raw;
+      let isFirst = false;
+      const markers = [
+        "【初参加】",
+        "（初）",
+        "(初)",
+        "【初】",
+        "初参加",
+        "［初］",
+        "[初]",
+      ];
+      for (const m of markers) {
+        if (t.includes(m)) {
+          isFirst = true;
+          t = t.split(m).join("");
+        }
+      }
+      if (/\bNEW\b/i.test(t)) {
+        isFirst = true;
+        t = t.replace(/\bNEW\b/gi, "");
+      }
+      t = t.replace(/\s{2,}/g, " ").trim();
+      return { display: t || raw.trim(), isFirst };
+    }
+
+    /**
+     * 参加者欄: nameStart から連続して MAX_PARTICIPANTS 行。
+     * 「開催回数」以降は空枠。開催回数の文字自体は表示しない。
+     */
+    function collectNameSlots(rows, c, ns, ne) {
+      const slots = [];
+      let footer = false;
+      for (let i = 0; i < MAX_PARTICIPANTS; i++) {
+        const r = ns + i;
+        if (footer || r > ne) {
+          slots.push({ raw: "" });
+          continue;
+        }
+        const raw = cell(rows, r, c);
+        if (isSessionCountLabel(raw)) {
+          footer = true;
+          slots.push({ raw: "" });
+          continue;
+        }
+        slots.push({ raw });
+      }
+      return slots.map(({ raw }) => parseParticipantCell(raw));
+    }
+
+    /**
+     * 列ごとに { date, place, slots } を組み立てる。
      * 日付セルが空の列は含めない。
      */
     function buildSessions(rows) {
@@ -160,15 +236,12 @@
         if (!date) continue;
 
         const place = cell(rows, pr, c);
-        const names = [];
-        for (let r = ns; r <= ne; r++) {
-          names.push(cell(rows, r, c));
-        }
+        const slots = collectNameSlots(rows, c, ns, ne);
         sessions.push({
           col: c,
           date,
           place: place || "—",
-          names: names.filter(Boolean),
+          slots,
         });
       }
       return sessions;
@@ -216,17 +289,44 @@
 
         const ul = document.createElement("ul");
         ul.className = "session__names";
-        if (s.names.length === 0) {
+        const hasAnyone = s.slots.some((x) => x.display);
+        if (!hasAnyone) {
           const li = document.createElement("li");
-          li.className = "is-empty";
-          li.textContent = "参加者なし";
+          li.className = "session__row session__row--empty-row";
+          li.innerHTML =
+            '<span class="session__num" aria-hidden="true">—</span><span class="session__name">参加者なし</span>';
           ul.appendChild(li);
         } else {
-          for (const n of s.names) {
+          s.slots.forEach((slot, index) => {
             const li = document.createElement("li");
-            li.textContent = n;
+            const num = index + 1;
+            const empty = !slot.display;
+            li.className = "session__row";
+            if (empty) li.classList.add("session__row--slot-empty");
+            if (slot.isFirst && !empty) li.classList.add("session__row--first");
+
+            const numEl = document.createElement("span");
+            numEl.className = "session__num";
+            numEl.setAttribute("aria-hidden", "true");
+            numEl.textContent = String(num);
+
+            const nameEl = document.createElement("span");
+            nameEl.className = "session__name";
+            nameEl.textContent = empty ? "" : slot.display;
+
+            li.appendChild(numEl);
+            li.appendChild(nameEl);
+
+            if (slot.isFirst && !empty) {
+              const badge = document.createElement("span");
+              badge.className = "session__badge";
+              badge.textContent = "初";
+              badge.title = "初参加";
+              li.appendChild(badge);
+            }
+
             ul.appendChild(li);
-          }
+          });
         }
         card.appendChild(ul);
         sessionsEl.appendChild(card);
@@ -268,10 +368,10 @@
       selectEl.addEventListener("change", () => {
         loadSheet(selectEl.value);
       });
+      return sorted[0] || "";
     }
 
-    initSelect();
-    loadSheet(selectEl.value || SHEET_NAMES[0]);
+    loadSheet(initSelect() || "202601");
   </script>
 </body>
 </html>

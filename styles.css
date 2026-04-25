@@ -7,6 +7,9 @@
   --accent: #ff6b35;
   --accent-dim: rgba(255, 107, 53, 0.15);
   --success: #3ecf8e;
+  --first-bg: rgba(232, 197, 71, 0.12);
+  --first-border: rgba(232, 197, 71, 0.85);
+  --first-badge: #e8c547;
   --radius: 14px;
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
@@ -169,7 +172,7 @@ select:focus {
 
 .session {
   flex: 0 0 auto;
-  width: min(280px, 85vw);
+  width: min(300px, 88vw);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -223,7 +226,7 @@ select:focus {
   flex: 1;
 }
 
-.session__names li {
+.session__row {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -231,25 +234,69 @@ select:focus {
   padding: 0.35rem 0.5rem;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
 }
 
-.session__names li::before {
-  content: "";
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--success);
-  opacity: 0.85;
+.session__num {
+  flex: 0 0 auto;
+  min-width: 1.35rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  user-select: none;
 }
 
-.session__names li.is-empty {
+.session__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.session__badge {
+  flex: 0 0 auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  color: #1a1408;
+  background: linear-gradient(145deg, var(--first-badge), #f0d78a);
+  line-height: 1.2;
+}
+
+.session__row--slot-empty .session__name {
+  min-height: 1.1em;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+  align-self: stretch;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+.session__row--slot-empty .session__num {
+  opacity: 0.45;
+}
+
+.session__row--first {
+  background: var(--first-bg);
+  border-color: rgba(232, 197, 71, 0.25);
+  box-shadow: inset 3px 0 0 0 var(--first-border);
+}
+
+.session__row--first .session__num {
+  color: #d4b96a;
+}
+
+.session__row--empty-row {
   color: var(--muted);
   font-style: italic;
+  justify-content: flex-start;
 }
 
-.session__names li.is-empty::before {
-  background: var(--muted);
-  opacity: 0.35;
+.session__row--empty-row .session__num {
+  min-width: 1.5rem;
+  text-align: center;
 }
 
 .empty-sheet {
