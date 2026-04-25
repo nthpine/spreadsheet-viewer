@@ -80,6 +80,12 @@
     }
 
     /** プローブ開始月から「今月＋未来 N ヶ月」までの YYYYMM 候補（202605 なども含む） */
+    /** ローカル日付の「今月」を YYYYMM（シート名と比較用） */
+    function currentYmSix() {
+      const n = new Date();
+      return `${n.getFullYear()}${String(n.getMonth() + 1).padStart(2, "0")}`;
+    }
+
     function sheetCandidatesForDiscovery() {
       const now = new Date();
       const ty = now.getFullYear();
@@ -271,17 +277,22 @@
      * 日付セル（例: 4/15(水)、3月30日、2026/4/25）を Date にする。年は月シート名 YYYYMM を補完。
      */
     function parseSessionDateFromCell(dateStr, ymSix) {
-      const t = String(dateStr || "")
+      const raw = String(dateStr || "")
         .normalize("NFKC")
         .trim();
-      if (!t) return null;
-      const ymd = t.match(
+      if (!raw) return null;
+      const ymd = raw.match(
         /(\d{4})[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})/,
       );
       if (ymd) {
         const dt = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
         return Number.isNaN(dt.getTime()) ? null : dt;
       }
+      const t = raw
+        .replace(/\([^)]*\)/g, "")
+        .replace(/（[^）]*）/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
       const jp = t.match(/(\d{1,2})月(\d{1,2})日/);
       if (jp && ymSix && /^\d{6}$/.test(ymSix)) {
         const yy = +ymSix.slice(0, 4);
@@ -881,12 +892,13 @@
           rows.push({ sheetName, session: s, dt });
         }
       }
-      rows.sort(
-        (a, b) =>
-          a.dt - b.dt ||
-          a.session.col - b.session.col ||
-          a.sheetName.localeCompare(b.sheetName),
-      );
+      rows.sort((a, b) => {
+        const ta = startOfLocalDay(a.dt).getTime();
+        const tb = startOfLocalDay(b.dt).getTime();
+        if (ta !== tb) return ta - tb;
+        if (a.session.col !== b.session.col) return a.session.col - b.session.col;
+        return a.sheetName.localeCompare(b.sheetName);
+      });
       const seenDay = new Set();
       const out = [];
       for (const e of rows) {
@@ -895,6 +907,12 @@
         seenDay.add(dk);
         out.push(e);
       }
+      out.sort((a, b) => {
+        const ta = startOfLocalDay(a.dt).getTime();
+        const tb = startOfLocalDay(b.dt).getTime();
+        if (ta !== tb) return ta - tb;
+        return a.session.col - b.session.col;
+      });
       return out;
     }
 
@@ -923,8 +941,8 @@
     }
 
     /**
-     * 発見済みの全 YYYYMM シートを読み、日付で過去／今後に分ける。
-     * sessionsBySheet … 妥当性チェック済みの月シートごとの全列（過去は列フィルタ後に表示）
+     * 指定した YYYYMM シートだけ取得（初回は今月以降のみ＝高速化）。
+     * sessionsBySheet … 妥当性チェック済みの月シートごとの全列
      */
     async function buildSessionPlan(sheetIds) {
       const lookupSessions = await fetchLookupSessionsOnce();
@@ -956,19 +974,44 @@
         }
       }
 
-      const today = startOfLocalDay(new Date());
-      const pastEntries = [];
-      for (const e of allEntries) {
-        if (startOfLocalDay(e.dt) < today) pastEntries.push(e);
-      }
-      pastEntries.sort((a, b) => b.dt - a.dt);
-
       return {
         lookupSessions,
         allEntries,
-        pastEntries,
         sessionsBySheet,
       };
+    }
+
+    /** 過去月シートをまだ読んでいなければ取得して sessionsBySheet に載せる */
+    async function ensurePastSheetLoaded(sheetName) {
+      if (!sessionPlan?.sessionsBySheet) return false;
+      if (sessionPlan.sessionsBySheet.has(sheetName)) return true;
+      setStatus("loading", "読み込み中…");
+      try {
+        const list = await fetchMergedSessionsForSheet(
+          sheetName,
+          sessionPlan.lookupSessions,
+        );
+        const sorted = [...(list || [])].sort((a, b) => a.col - b.col);
+        if (!sessionsPlausibleForSheet(sorted, sheetName)) {
+          setStatus("hidden", "");
+          return false;
+        }
+        sessionPlan.sessionsBySheet.set(sheetName, sorted);
+        const seenCol = new Set();
+        for (const s of sorted) {
+          const dt = parseSessionDateFromCell(s.date, sheetName);
+          if (!dt) continue;
+          const ck = `${sheetName}:${s.col}`;
+          if (seenCol.has(ck)) continue;
+          seenCol.add(ck);
+          sessionPlan.allEntries.push({ sheetName, session: s, dt });
+        }
+        setStatus("hidden", "");
+        return true;
+      } catch (_) {
+        setStatus("hidden", "");
+        return false;
+      }
     }
 
     function rebuildScheduleSelect(plan) {
@@ -995,17 +1038,17 @@
       const ogPast = document.createElement("optgroup");
       ogPast.label = "過去の日程";
 
-      if (!plan.pastEntries.length) {
+      const pastIds = Array.isArray(plan.pastSheetIds)
+        ? plan.pastSheetIds
+        : [];
+      if (!pastIds.length) {
         const o = document.createElement("option");
         o.value = "";
         o.textContent = "（過去の日程なし）";
         o.disabled = true;
         ogPast.appendChild(o);
       } else {
-        const pastSheets = [
-          ...new Set(plan.pastEntries.map((e) => e.sheetName)),
-        ].sort((a, b) => b.localeCompare(a));
-        for (const sh of pastSheets) {
+        for (const sh of pastIds) {
           const opt = document.createElement("option");
           opt.value = `${PAST_MONTH_PREFIX}${sh}`;
           opt.textContent = formatSheetLabel(sh);
@@ -1016,7 +1059,7 @@
 
       scheduleSelectEl.disabled =
         !collectFutureEntriesFromSheets(plan).length &&
-        !plan.pastEntries.length;
+        !(Array.isArray(plan.pastSheetIds) && plan.pastSheetIds.length);
     }
 
     function renderUpcomingAll() {
@@ -1037,8 +1080,17 @@
     }
 
     /** 過去: その月シートのうち「今日より前」の列だけを列順で表示 */
-    function renderPastMonthSheet(sheetName) {
+    async function renderPastMonthSheet(sheetName) {
       if (!sessionPlan || !sessionPlan.sessionsBySheet) return;
+      const loaded = await ensurePastSheetLoaded(sheetName);
+      if (!loaded) {
+        renderSessions(
+          [],
+          "この月のデータを取得できませんでした。",
+        );
+        scrollSessionsToStart();
+        return;
+      }
       const sessions = sessionPlan.sessionsBySheet.get(sheetName);
       if (!sessions || !sessions.length) return;
       const today = startOfLocalDay(new Date());
@@ -1065,7 +1117,7 @@
       if (scheduleSelectWired) return;
       scheduleSelectWired = true;
 
-      scheduleSelectEl.addEventListener("change", () => {
+      scheduleSelectEl.addEventListener("change", async () => {
         const v = scheduleSelectEl.value;
         if (!v || v === "") {
           if (
@@ -1087,7 +1139,7 @@
           return;
         }
         if (v.startsWith(PAST_MONTH_PREFIX)) {
-          renderPastMonthSheet(v.slice(PAST_MONTH_PREFIX.length));
+          await renderPastMonthSheet(v.slice(PAST_MONTH_PREFIX.length));
           return;
         }
       });
@@ -1104,9 +1156,25 @@
           );
           return;
         }
-        setStatus("loading", "各月の日程・参加者を読み込み中…");
-        sessionPlan = await buildSessionPlan(list);
-        if (!sessionPlan.allEntries.length) {
+        const cur = currentYmSix();
+        let toFetch = list
+          .filter((ym) => /^\d{6}$/.test(ym) && ym >= cur)
+          .sort((a, b) => a.localeCompare(b));
+        if (!toFetch.length) {
+          toFetch = [...list].sort((a, b) => a.localeCompare(b));
+        }
+        const pastSheetIds = list
+          .filter((ym) => /^\d{6}$/.test(ym) && ym < cur)
+          .sort((a, b) => b.localeCompare(a));
+
+        setStatus("loading", "今月以降のシートを読み込み中…");
+        sessionPlan = await buildSessionPlan(toFetch);
+        sessionPlan.pastSheetIds = pastSheetIds;
+
+        if (
+          !sessionPlan.sessionsBySheet.size &&
+          !sessionPlan.allEntries.length
+        ) {
           setStatus(
             "error",
             "日付として解釈できる列がありません。日付セルの形式を確認してください。",
@@ -1118,13 +1186,10 @@
         if (collectFutureEntriesFromSheets(sessionPlan).length) {
           scheduleSelectEl.value = "__ALL__";
           renderUpcomingAll();
-        } else if (sessionPlan.pastEntries.length) {
-          const pastSheets = [
-            ...new Set(sessionPlan.pastEntries.map((e) => e.sheetName)),
-          ].sort((a, b) => b.localeCompare(a));
-          const sh = pastSheets[0];
+        } else if (pastSheetIds.length) {
+          const sh = pastSheetIds[0];
           scheduleSelectEl.value = `${PAST_MONTH_PREFIX}${sh}`;
-          renderPastMonthSheet(sh);
+          await renderPastMonthSheet(sh);
         } else {
           scheduleSelectEl.value = "";
           renderSessions(
