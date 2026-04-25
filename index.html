@@ -2,30 +2,491 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>スプレッドシート表示</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>バスケ参加者 · スプレッドシート</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c1118;
+      --bg-card: #141b26;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e8edf5;
+      --muted: #8b98ab;
+      --accent: #ff6b35;
+      --accent-dim: rgba(255, 107, 53, 0.15);
+      --success: #3ecf8e;
+      --radius: 14px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Noto Sans JP", "DM Sans", system-ui, sans-serif;
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(255, 107, 53, 0.12), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .brand h1 {
+      margin: 0 0 0.35rem;
+      font-size: clamp(1.35rem, 3vw, 1.75rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .controls label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    select {
+      appearance: none;
+      min-width: 200px;
+      padding: 0.65rem 2.25rem 0.65rem 0.9rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--bg-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b98ab' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 0.85rem center;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+
+    select:hover,
+    select:focus {
+      border-color: rgba(255, 107, 53, 0.45);
+      outline: none;
+    }
+
+    .status {
+      margin-bottom: 1.25rem;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .status.is-visible {
+      display: block;
+    }
+
+    .status--loading {
+      background: var(--accent-dim);
+      color: #ffb399;
+    }
+
+    .status--error {
+      background: rgba(239, 68, 68, 0.12);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .sessions {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .session {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.35rem;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .session::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), #f7c948);
+      opacity: 0.9;
+    }
+
+    .session__date {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 0 0 0.25rem;
+      color: var(--text);
+    }
+
+    .session__place {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .session__place svg {
+      flex-shrink: 0;
+      opacity: 0.7;
+    }
+
+    .session__names {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .session__names li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.92rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .session__names li::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      opacity: 0.85;
+    }
+
+    .session__names li.is-empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .session__names li.is-empty::before {
+      background: var(--muted);
+      opacity: 0.35;
+    }
+
+    .empty-sheet {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--muted);
+      background: var(--bg-card);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
 </head>
 <body>
-  <table id="table" border="1"></table>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <h1>バスケ参加者</h1>
+        <p>シート（YYYYMM）を切り替えて各回の日程・場所・参加者を表示します。</p>
+      </div>
+      <div class="controls">
+        <label for="sheet-select">表示する月</label>
+        <select id="sheet-select" aria-label="シートを選択"></select>
+      </div>
+    </header>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+    <div id="sessions" class="sessions"></div>
+
+    <footer>データは Google スプレッドシートの公開 CSV から取得しています。</footer>
+  </div>
 
   <script>
-    const url = "https://docs.google.com/spreadsheets/d/1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30/export?format=csv&gid=1760124345";
+    /**
+     * スプレッドシート ID と、ドロップダウンに出すシート名（例: 202604）。
+     * 「参加者」など別シートはここに含めなければ表示されません。
+     */
+    const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
+    const SHEET_NAMES = [
+      "202604",
+      "202603",
+      "202602",
+      "202601",
+    ];
 
-    fetch(url)
-      .then(res => res.text())
-      .then(csv => {
-        const rows = csv.split("\n").map(r => r.split(","));
-        const table = document.getElementById("table");
+    /**
+     * シート上の行番号（1始まり）。
+     * 1行目にタイトルがあり「2行目＝日付・3行目＝場所・4〜18行目＝名前」の場合は
+     * dateRow:2, placeRow:3, nameStartRow:4 に変更してください。
+     */
+    const LAYOUT = {
+      dateRow: 1,
+      placeRow: 2,
+      nameStartRow: 3,
+      nameEndRow: 18,
+    };
 
-        rows.forEach(row => {
-          const tr = document.createElement("tr");
-          row.forEach(cell => {
-            const td = document.createElement("td");
-            td.textContent = cell;
-            tr.appendChild(td);
-          });
-          table.appendChild(tr);
-        });
+    function csvUrl(sheetName) {
+      const q = new URLSearchParams({
+        tqx: "out:csv",
+        sheet: sheetName,
       });
+      return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?${q}`;
+    }
+
+    /** 簡易 CSV パーサ（ダブルクォート・エスケープ対応） */
+    function parseCSV(text) {
+      const rows = [];
+      let row = [];
+      let cell = "";
+      let i = 0;
+      let inQuotes = false;
+
+      while (i < text.length) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i + 1] === '"') {
+              cell += '"';
+              i += 2;
+              continue;
+            }
+            inQuotes = false;
+            i++;
+            continue;
+          }
+          cell += c;
+          i++;
+          continue;
+        }
+        if (c === '"') {
+          inQuotes = true;
+          i++;
+          continue;
+        }
+        if (c === ",") {
+          row.push(cell);
+          cell = "";
+          i++;
+          continue;
+        }
+        if (c === "\r") {
+          i++;
+          continue;
+        }
+        if (c === "\n") {
+          row.push(cell);
+          rows.push(row);
+          row = [];
+          cell = "";
+          i++;
+          continue;
+        }
+        cell += c;
+        i++;
+      }
+      row.push(cell);
+      if (row.length > 1 || row[0] !== "") {
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function formatSheetLabel(name) {
+      const m = /^(\d{4})(\d{2})$/.exec(name.trim());
+      if (!m) return name;
+      const y = parseInt(m[1], 10);
+      const mo = parseInt(m[2], 10);
+      return `${y}年${mo}月（${name}）`;
+    }
+
+    function idx1(n) {
+      return n - 1;
+    }
+
+    function cell(rows, r, c) {
+      if (!rows[r] || rows[r][c] === undefined) return "";
+      const v = rows[r][c];
+      return String(v).trim();
+    }
+
+    /**
+     * 列ごとに { date, place, names } を組み立てる。
+     * 左端の空列・右端の空列はスキップ。
+     */
+    function buildSessions(rows) {
+      const dr = idx1(LAYOUT.dateRow);
+      const pr = idx1(LAYOUT.placeRow);
+      const ns = idx1(LAYOUT.nameStartRow);
+      const ne = idx1(LAYOUT.nameEndRow);
+
+      const maxCol = Math.max(
+        ...rows.map((r) => r.length),
+        0,
+      );
+
+      const sessions = [];
+      for (let c = 0; c < maxCol; c++) {
+        const date = cell(rows, dr, c);
+        const place = cell(rows, pr, c);
+        const names = [];
+        for (let r = ns; r <= ne; r++) {
+          names.push(cell(rows, r, c));
+        }
+        const hasNames = names.some(Boolean);
+        if (!(date || place || hasNames)) continue;
+        if (!date && !hasNames) continue;
+        sessions.push({
+          col: c,
+          date: date || "（日付なし）",
+          place: place || "—",
+          names: names.filter(Boolean),
+        });
+      }
+      return sessions;
+    }
+
+    const statusEl = document.getElementById("status");
+    const sessionsEl = document.getElementById("sessions");
+    const selectEl = document.getElementById("sheet-select");
+
+    function setStatus(kind, message) {
+      statusEl.className = "status is-visible";
+      statusEl.textContent = message;
+      statusEl.classList.toggle("status--loading", kind === "loading");
+      statusEl.classList.toggle("status--error", kind === "error");
+      if (kind === "hidden") {
+        statusEl.classList.remove("is-visible");
+      }
+    }
+
+    function renderSessions(sessions) {
+      sessionsEl.innerHTML = "";
+      if (!sessions.length) {
+        sessionsEl.innerHTML =
+          '<p class="empty-sheet">このシートから読み取れる列がありません。LAYOUT の行番号をスプレッドシートに合わせて調整してください。</p>';
+        return;
+      }
+
+      for (const s of sessions) {
+        const card = document.createElement("article");
+        card.className = "session";
+
+        const h2 = document.createElement("h2");
+        h2.className = "session__date";
+        h2.textContent = s.date;
+        card.appendChild(h2);
+
+        const place = document.createElement("div");
+        place.className = "session__place";
+        place.innerHTML =
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+        const placeText = document.createElement("span");
+        placeText.textContent = s.place;
+        place.appendChild(placeText);
+        card.appendChild(place);
+
+        const ul = document.createElement("ul");
+        ul.className = "session__names";
+        if (s.names.length === 0) {
+          const li = document.createElement("li");
+          li.className = "is-empty";
+          li.textContent = "参加者なし";
+          ul.appendChild(li);
+        } else {
+          for (const n of s.names) {
+            const li = document.createElement("li");
+            li.textContent = n;
+            ul.appendChild(li);
+          }
+        }
+        card.appendChild(ul);
+        sessionsEl.appendChild(card);
+      }
+    }
+
+    async function loadSheet(sheetName) {
+      setStatus("loading", "読み込み中…");
+      sessionsEl.innerHTML = "";
+
+      try {
+        const res = await fetch(csvUrl(sheetName));
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const text = await res.text();
+        const rows = parseCSV(text);
+        const sessions = buildSessions(rows);
+        setStatus("hidden", "");
+        renderSessions(sessions);
+      } catch (e) {
+        setStatus(
+          "error",
+          `「${sheetName}」の取得に失敗しました。シート名・共有設定・ネットワークを確認してください。`,
+        );
+        console.error(e);
+      }
+    }
+
+    function initSelect() {
+      const sorted = [...SHEET_NAMES].sort((a, b) => b.localeCompare(a));
+      selectEl.innerHTML = "";
+      for (const name of sorted) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = formatSheetLabel(name);
+        selectEl.appendChild(opt);
+      }
+      selectEl.addEventListener("change", () => {
+        loadSheet(selectEl.value);
+      });
+    }
+
+    initSelect();
+    loadSheet(selectEl.value || SHEET_NAMES[0]);
   </script>
 </body>
 </html>
