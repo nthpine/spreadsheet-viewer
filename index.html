@@ -882,17 +882,34 @@
     }
 
     /**
-     * 今後の予定で同じ暦日が複数列あるとき 1 枚だけ残す（先に来た列を採用）。
-     * すべて表示・プルダウン双方で使う。
+     * 「すべて表示」と今後の日付プルダウン用。
+     * セルから再パースして本日以降のみにし、(sheet,col) と暦日の重複を除く。
      */
-    function dedupeUpcomingEntriesByCalendarDay(entries) {
-      const seen = new Set();
+    function strictUpcomingEntriesForAllView(entries) {
+      const today = startOfLocalDay(new Date());
+      const sorted = [...(entries || [])]
+        .map((e) => {
+          const dt = parseSessionDateFromCell(e.session.date, e.sheetName);
+          if (!dt) return null;
+          return { ...e, dt };
+        })
+        .filter((e) => e && startOfLocalDay(e.dt) >= today)
+        .sort(
+          (a, b) =>
+            a.dt - b.dt ||
+            a.session.col - b.session.col ||
+            a.sheetName.localeCompare(b.sheetName),
+        );
+      const seenCol = new Set();
+      const seenDay = new Set();
       const out = [];
-      for (const e of entries) {
-        if (!e.dt) continue;
-        const k = calendarDayKeyFromDate(e.dt);
-        if (seen.has(k)) continue;
-        seen.add(k);
+      for (const e of sorted) {
+        const colKey = `${e.sheetName}:${e.session.col}`;
+        if (seenCol.has(colKey)) continue;
+        seenCol.add(colKey);
+        const dayKey = calendarDayKeyFromDate(e.dt);
+        if (seenDay.has(dayKey)) continue;
+        seenDay.add(dayKey);
         out.push(e);
       }
       return out;
@@ -944,9 +961,13 @@
           const list = [...(sessions || [])].sort((a, b) => a.col - b.col);
           if (!sessionsPlausibleForSheet(list, sheetName)) continue;
           sessionsBySheet.set(sheetName, list);
+          const seenColInSheet = new Set();
           for (const s of list) {
             const dt = parseSessionDateFromCell(s.date, sheetName);
             if (!dt) continue;
+            const colKey = `${sheetName}:${s.col}`;
+            if (seenColInSheet.has(colKey)) continue;
+            seenColInSheet.add(colKey);
             allEntries.push({ sheetName, session: s, dt });
           }
         }
@@ -991,7 +1012,7 @@
         allOpt.value = "__ALL__";
         allOpt.textContent = "すべて表示（日付順）";
         ogUp.appendChild(allOpt);
-        const upDeduped = dedupeUpcomingEntriesByCalendarDay(
+        const upDeduped = strictUpcomingEntriesForAllView(
           plan.upcomingEntries,
         );
         for (const e of upDeduped) {
@@ -1037,7 +1058,7 @@
         );
         return;
       }
-      const deduped = dedupeUpcomingEntriesByCalendarDay(
+      const deduped = strictUpcomingEntriesForAllView(
         sessionPlan.upcomingEntries,
       );
       renderSessions(annotateNearestAcrossMany(deduped));
