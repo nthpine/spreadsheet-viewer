@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>スプレッドシート表示</title>
+</head>
+<body>
+  <table id="table" border="1"></table>
+
+  <script>
+    const url = "https://docs.google.com/spreadsheets/d/1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30/export?format=csv&gid=1760124345";
+
+    fetch(url)
+      .then(res => res.text())
+      .then(csv => {
+        const rows = csv.split("\n").map(r => r.split(","));
+        const table = document.getElementById("table");
+
+        rows.forEach(row => {
+          const tr = document.createElement("tr");
+          row.forEach(cell => {
+            const td = document.createElement("td");
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
+          table.appendChild(tr);
+        });
+      });
+  </script>
+</body>
+</html>
