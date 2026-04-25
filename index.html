@@ -7,223 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0c1118;
-      --bg-card: #141b26;
-      --border: rgba(255, 255, 255, 0.08);
-      --text: #e8edf5;
-      --muted: #8b98ab;
-      --accent: #ff6b35;
-      --accent-dim: rgba(255, 107, 53, 0.15);
-      --success: #3ecf8e;
-      --radius: 14px;
-      --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: "Noto Sans JP", "DM Sans", system-ui, sans-serif;
-      background:
-        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(255, 107, 53, 0.12), transparent 50%),
-        var(--bg);
-      color: var(--text);
-      line-height: 1.5;
-    }
-
-    .wrap {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 2rem 1.25rem 3rem;
-    }
-
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 1.25rem;
-      margin-bottom: 2rem;
-    }
-
-    .brand h1 {
-      margin: 0 0 0.35rem;
-      font-size: clamp(1.35rem, 3vw, 1.75rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    .brand p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .controls {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-    }
-
-    .controls label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-    }
-
-    select {
-      appearance: none;
-      min-width: 200px;
-      padding: 0.65rem 2.25rem 0.65rem 0.9rem;
-      font-family: inherit;
-      font-size: 0.95rem;
-      font-weight: 500;
-      color: var(--text);
-      background: var(--bg-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b98ab' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 0.85rem center;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      cursor: pointer;
-      box-shadow: var(--shadow);
-    }
-
-    select:hover,
-    select:focus {
-      border-color: rgba(255, 107, 53, 0.45);
-      outline: none;
-    }
-
-    .status {
-      margin-bottom: 1.25rem;
-      padding: 0.75rem 1rem;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      display: none;
-    }
-
-    .status.is-visible {
-      display: block;
-    }
-
-    .status--loading {
-      background: var(--accent-dim);
-      color: #ffb399;
-    }
-
-    .status--error {
-      background: rgba(239, 68, 68, 0.12);
-      color: #fca5a5;
-      border: 1px solid rgba(239, 68, 68, 0.25);
-    }
-
-    .sessions {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1.25rem;
-    }
-
-    .session {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem 1.35rem;
-      box-shadow: var(--shadow);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .session::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent), #f7c948);
-      opacity: 0.9;
-    }
-
-    .session__date {
-      font-size: 1.05rem;
-      font-weight: 700;
-      margin: 0 0 0.25rem;
-      color: var(--text);
-    }
-
-    .session__place {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin-bottom: 1rem;
-    }
-
-    .session__place svg {
-      flex-shrink: 0;
-      opacity: 0.7;
-    }
-
-    .session__names {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    .session__names li {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.92rem;
-      padding: 0.35rem 0.5rem;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.03);
-    }
-
-    .session__names li::before {
-      content: "";
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-      opacity: 0.85;
-    }
-
-    .session__names li.is-empty {
-      color: var(--muted);
-      font-style: italic;
-    }
-
-    .session__names li.is-empty::before {
-      background: var(--muted);
-      opacity: 0.35;
-    }
-
-    .empty-sheet {
-      text-align: center;
-      padding: 3rem 1.5rem;
-      color: var(--muted);
-      background: var(--bg-card);
-      border: 1px dashed var(--border);
-      border-radius: var(--radius);
-    }
-
-    footer {
-      margin-top: 2.5rem;
-      text-align: center;
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="wrap">
@@ -239,7 +23,9 @@
     </header>
 
     <div id="status" class="status" role="status" aria-live="polite"></div>
-    <div id="sessions" class="sessions"></div>
+    <div class="sessions-scroll">
+      <div id="sessions" class="sessions"></div>
+    </div>
 
     <footer>データは Google スプレッドシートの公開 CSV から取得しています。</footer>
   </div>
@@ -355,7 +141,7 @@
 
     /**
      * 列ごとに { date, place, names } を組み立てる。
-     * 左端の空列・右端の空列はスキップ。
+     * 日付セルが空の列は含めない。
      */
     function buildSessions(rows) {
       const dr = idx1(LAYOUT.dateRow);
@@ -371,17 +157,16 @@
       const sessions = [];
       for (let c = 0; c < maxCol; c++) {
         const date = cell(rows, dr, c);
+        if (!date) continue;
+
         const place = cell(rows, pr, c);
         const names = [];
         for (let r = ns; r <= ne; r++) {
           names.push(cell(rows, r, c));
         }
-        const hasNames = names.some(Boolean);
-        if (!(date || place || hasNames)) continue;
-        if (!date && !hasNames) continue;
         sessions.push({
           col: c,
-          date: date || "（日付なし）",
+          date,
           place: place || "—",
           names: names.filter(Boolean),
         });
@@ -407,7 +192,7 @@
       sessionsEl.innerHTML = "";
       if (!sessions.length) {
         sessionsEl.innerHTML =
-          '<p class="empty-sheet">このシートから読み取れる列がありません。LAYOUT の行番号をスプレッドシートに合わせて調整してください。</p>';
+          '<p class="empty-sheet">日付の入っている列がありません。LAYOUT の行番号をスプレッドシートに合わせて調整してください。</p>';
         return;
       }
 
