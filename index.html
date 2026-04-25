@@ -31,13 +31,22 @@
   </div>
 
   <script>
-    /**
-     * スプレッドシート ID と、ドロップダウンに出すシート名（例: 202604）。
-     * 「参加者」など別シートはここに含めなければ表示されません。
-     */
+    /** スプレッドシート ID（月シートは YYYYMM 名で存在するものだけプルダウンに出る） */
     const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
 
-    /** プルダウンに出す YYYYMM（2025年・2026年を同じ形式で列挙） */
+    /**
+     * 月次シートのほかに参照するシート名（過去回の名前など）。
+     * 存在しない場合は無視されます。
+     */
+    const LOOKUP_SHEET_NAME = "参加者";
+
+    /** シート存在確認の候補の開始年月（この月以降だけ試す） */
+    const SHEET_PROBE_FROM_YEAR = 2025;
+    const SHEET_PROBE_FROM_MONTH = 1;
+
+    /** シート一覧のキャッシュ（ミリ秒） */
+    const SHEET_LIST_CACHE_MS = 60 * 60 * 1000;
+
     function sheetNamesRange(fromYear, fromMonth, toYear, toMonth) {
       const out = [];
       let y = fromYear;
@@ -53,7 +62,79 @@
       return out;
     }
 
-    const SHEET_NAMES = sheetNamesRange(2025, 1, 2026, 12);
+    /** 今日までの YYYYMM 候補（未来の月は含めない） */
+    function sheetCandidatesUpToToday() {
+      const now = new Date();
+      const ty = now.getFullYear();
+      const tm = now.getMonth() + 1;
+      return sheetNamesRange(
+        SHEET_PROBE_FROM_YEAR,
+        SHEET_PROBE_FROM_MONTH,
+        ty,
+        tm,
+      );
+    }
+
+    function csvLooksValid(text) {
+      const t = String(text || "").trimStart();
+      if (!t || t.startsWith("<") || t.startsWith("<!")) return false;
+      if (t.length < 3) return false;
+      return t.includes(",") && (t.includes("\n") || t.length > 20);
+    }
+
+    async function fetchSheetText(sheetName) {
+      const res = await fetch(csvUrl(sheetName));
+      if (!res.ok) return null;
+      const text = await res.text();
+      if (!csvLooksValid(text)) return null;
+      return text;
+    }
+
+    async function sheetExists(sheetName) {
+      const text = await fetchSheetText(sheetName);
+      return text !== null;
+    }
+
+    async function discoverMonthSheets() {
+      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v1`;
+      try {
+        const raw = sessionStorage.getItem(cacheKey);
+        if (raw) {
+          const { list, ts } = JSON.parse(raw);
+          if (
+            Array.isArray(list) &&
+            Date.now() - (ts || 0) < SHEET_LIST_CACHE_MS
+          ) {
+            return list;
+          }
+        }
+      } catch (_) {
+        /* ignore */
+      }
+
+      const candidates = sheetCandidatesUpToToday();
+      const batchSize = 6;
+      const found = [];
+      for (let i = 0; i < candidates.length; i += batchSize) {
+        const chunk = candidates.slice(i, i + batchSize);
+        const flags = await Promise.all(
+          chunk.map((ym) => sheetExists(ym).then((ok) => (ok ? ym : null))),
+        );
+        for (const ym of flags) {
+          if (ym) found.push(ym);
+        }
+      }
+      const list = found.sort((a, b) => b.localeCompare(a));
+      try {
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({ list, ts: Date.now() }),
+        );
+      } catch (_) {
+        /* ignore */
+      }
+      return list;
+    }
 
     /** 参加者は最大この人数ぶんの行を表示（空枠で埋める） */
     const MAX_PARTICIPANTS = 15;
@@ -215,6 +296,109 @@
       return slots.map(({ raw }) => parseParticipantCell(raw));
     }
 
+    const FW_DIGITS = "０１２３４５６７８９";
+
+    function toFullWidthDigits(num) {
+      return String(num).replace(/\d/g, (d) => FW_DIGITS[parseInt(d, 10)]);
+    }
+
+    function bracketNum(n) {
+      return "［" + toFullWidthDigits(n) + "］";
+    }
+
+    function bracketName(display) {
+      const inner = display && String(display).trim() ? display : "　";
+      return "［" + inner + "］";
+    }
+
+    function normalizeKeyPart(s) {
+      return String(s || "")
+        .normalize("NFKC")
+        .replace(/\s+/g, "")
+        .trim();
+    }
+
+    function cloneSession(s) {
+      return {
+        col: s.col,
+        date: s.date,
+        place: s.place,
+        slots: s.slots.map((sl) => ({ display: sl.display, isFirst: sl.isFirst })),
+      };
+    }
+
+    /**
+     * 「参加者」シートなどから、日付（＋場所が取れるときは場所）が一致する列の名前を補完する。
+     * メインがまったく空ならその列はルックアップ側をそのまま使う。
+     */
+    function mergeSessionsFromLookup(mainSessions, lookupSessions) {
+      if (!lookupSessions || !lookupSessions.length) return mainSessions;
+
+      const byDatePlace = new Map();
+      const byDate = new Map();
+      for (const s of lookupSessions) {
+        const dk = normalizeKeyPart(s.date);
+        const pk = normalizeKeyPart(s.place);
+        if (dk && pk && pk !== "—") {
+          byDatePlace.set(`${dk}\t${pk}`, s);
+        }
+        if (!dk) continue;
+        if (!byDate.has(dk)) {
+          byDate.set(dk, cloneSession(s));
+          continue;
+        }
+        const prev = byDate.get(dk);
+        const mergedLu = {
+          ...prev,
+          place: prev.place && prev.place !== "—" ? prev.place : s.place,
+          slots: prev.slots.map((pa, i) => {
+            const pb = s.slots[i];
+            if (pa && pa.display) return { ...pa };
+            if (pb && pb.display) return { ...pb };
+            return { display: "", isFirst: false };
+          }),
+        };
+        byDate.set(dk, mergedLu);
+      }
+
+      function findLookup(date, place) {
+        const dk = normalizeKeyPart(date);
+        const pk = normalizeKeyPart(place);
+        if (dk && pk && pk !== "—") {
+          const hit = byDatePlace.get(`${dk}\t${pk}`);
+          if (hit) return hit;
+        }
+        return dk ? byDate.get(dk) || null : null;
+      }
+
+      const out = mainSessions.map((s) => {
+        const merged = cloneSession(s);
+        const lu = findLookup(s.date, s.place);
+        if (!lu) return merged;
+
+        const mainEmpty = !merged.slots.some((x) => x.display);
+        if (mainEmpty) {
+          merged.slots = lu.slots.map((sl) => ({
+            display: sl.display,
+            isFirst: sl.isFirst,
+          }));
+          return merged;
+        }
+
+        merged.slots = merged.slots.map((slot, i) => {
+          if (slot.display) return slot;
+          const f = lu.slots[i];
+          if (f && f.display) {
+            return { display: f.display, isFirst: f.isFirst };
+          }
+          return slot;
+        });
+        return merged;
+      });
+
+      return out;
+    }
+
     /**
      * 列ごとに { date, place, slots } を組み立てる。
      * 日付セルが空の列は含めない。
@@ -293,8 +477,8 @@
         if (!hasAnyone) {
           const li = document.createElement("li");
           li.className = "session__row session__row--empty-row";
-          li.innerHTML =
-            '<span class="session__num" aria-hidden="true">—</span><span class="session__name">参加者なし</span>';
+            li.innerHTML =
+              '<span class="session__num" aria-hidden="true">［—］</span><span class="session__name">［参加者なし］</span>';
           ul.appendChild(li);
         } else {
           s.slots.forEach((slot, index) => {
@@ -308,11 +492,11 @@
             const numEl = document.createElement("span");
             numEl.className = "session__num";
             numEl.setAttribute("aria-hidden", "true");
-            numEl.textContent = String(num);
+            numEl.textContent = bracketNum(num);
 
             const nameEl = document.createElement("span");
             nameEl.className = "session__name";
-            nameEl.textContent = empty ? "" : slot.display;
+            nameEl.textContent = bracketName(empty ? "" : slot.display);
 
             li.appendChild(numEl);
             li.appendChild(nameEl);
@@ -338,13 +522,22 @@
       sessionsEl.innerHTML = "";
 
       try {
-        const res = await fetch(csvUrl(sheetName));
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
+        const mainTextPromise = fetchSheetText(sheetName);
+        const lookupTextPromise = fetchSheetText(LOOKUP_SHEET_NAME);
+        const [mainText, lookupText] = await Promise.all([
+          mainTextPromise,
+          lookupTextPromise,
+        ]);
+        if (!mainText) {
+          throw new Error("main sheet empty or invalid");
         }
-        const text = await res.text();
-        const rows = parseCSV(text);
-        const sessions = buildSessions(rows);
+        const mainRows = parseCSV(mainText);
+        let sessions = buildSessions(mainRows);
+        if (lookupText) {
+          const lookupRows = parseCSV(lookupText);
+          const lookupSessions = buildSessions(lookupRows);
+          sessions = mergeSessionsFromLookup(sessions, lookupSessions);
+        }
         setStatus("hidden", "");
         renderSessions(sessions);
       } catch (e) {
@@ -356,22 +549,40 @@
       }
     }
 
-    function initSelect() {
-      const sorted = [...SHEET_NAMES].sort((a, b) => b.localeCompare(a));
+    function fillMonthSelect(sheetIds) {
       selectEl.innerHTML = "";
-      for (const name of sorted) {
+      for (const name of sheetIds) {
         const opt = document.createElement("option");
         opt.value = name;
         opt.textContent = formatSheetLabel(name);
         selectEl.appendChild(opt);
       }
-      selectEl.addEventListener("change", () => {
-        loadSheet(selectEl.value);
-      });
-      return sorted[0] || "";
     }
 
-    loadSheet(initSelect() || "202601");
+    async function bootstrap() {
+      setStatus("loading", "スプレッドシート上のシートを確認中…");
+      try {
+        const list = await discoverMonthSheets();
+        if (!list.length) {
+          setStatus(
+            "error",
+            "表示できる月シート（YYYYMM）がありません。共有設定とシート名を確認してください。",
+          );
+          return;
+        }
+        fillMonthSelect(list);
+        selectEl.addEventListener("change", () => {
+          loadSheet(selectEl.value);
+        });
+        setStatus("hidden", "");
+        await loadSheet(list[0]);
+      } catch (e) {
+        setStatus("error", "初期化に失敗しました。ネットワークを確認してください。");
+        console.error(e);
+      }
+    }
+
+    bootstrap();
   </script>
 </body>
 </html>
