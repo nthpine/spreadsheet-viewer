@@ -228,7 +228,7 @@
       for (let i = 0; i < MAX_PARTICIPANTS; i++) {
         const sl = slots && slots[i] ? slots[i] : {};
         out.push({
-          display: String(sl.display || "").trim(),
+          display: normalizeParticipantDisplay(sl.display),
           isFirst: Boolean(sl.isFirst),
           isFemale: Boolean(sl.isFemale),
         });
@@ -431,6 +431,20 @@
       return String(v).trim();
     }
 
+    /** 表示用: 見えない文字・全角スペースだけのセルは空とみなす */
+    function normalizeParticipantDisplay(s) {
+      let t = String(s ?? "");
+      t = t.normalize("NFKC");
+      t = t.replace(/\u200b|\u200c|\u200d|\ufeff/g, "");
+      t = t.replace(/\u00a0|\u3000/g, " ");
+      t = t.replace(/\s+/g, " ").trim();
+      return t;
+    }
+
+    function slotHasName(slot) {
+      return Boolean(normalizeParticipantDisplay(slot.display));
+    }
+
     function isSessionCountLabel(s) {
       return s === "開催回数" || s.startsWith("開催回数");
     }
@@ -440,10 +454,11 @@
      * 表示からは（初）などの装飾だけ除き、名前本体は残す。
      */
     function parseParticipantCell(raw) {
-      if (!raw) {
+      const rawStr = normalizeParticipantDisplay(raw);
+      if (!rawStr) {
         return { display: "", isFirst: false, isFemale: false };
       }
-      let t = raw;
+      let t = rawStr;
       let isFirst = false;
       const markers = [
         "【初参加】",
@@ -465,7 +480,8 @@
         t = t.replace(/\bNEW\b/gi, "");
       }
       t = t.replace(/\s{2,}/g, " ").trim();
-      return { display: t || raw.trim(), isFirst, isFemale: false };
+      const display = normalizeParticipantDisplay(t) || rawStr;
+      return { display, isFirst, isFemale: false };
     }
 
     /**
@@ -505,7 +521,7 @@
         date: s.date,
         place: s.place,
         slots: s.slots.map((sl) => ({
-          display: sl.display,
+          display: normalizeParticipantDisplay(sl.display),
           isFirst: sl.isFirst,
           isFemale: Boolean(sl.isFemale),
         })),
@@ -539,16 +555,16 @@
           place: prev.place && prev.place !== "—" ? prev.place : s.place,
           slots: prev.slots.map((pa, i) => {
             const pb = s.slots[i];
-            if (pa && pa.display) {
+            if (pa && slotHasName(pa)) {
               return {
-                display: pa.display,
+                display: normalizeParticipantDisplay(pa.display),
                 isFirst: Boolean(pa.isFirst),
                 isFemale: Boolean(pa.isFemale),
               };
             }
-            if (pb && pb.display) {
+            if (pb && slotHasName(pb)) {
               return {
-                display: pb.display,
+                display: normalizeParticipantDisplay(pb.display),
                 isFirst: Boolean(pb.isFirst),
                 isFemale: Boolean(pb.isFemale),
               };
@@ -578,11 +594,11 @@
         const luStrict = strict;
         const luLoose = loose;
 
-        const mainEmpty = !merged.slots.some((x) => x.display);
+        const mainEmpty = !merged.slots.some((x) => slotHasName(x));
 
         if (mainEmpty && luStrict) {
           merged.slots = luStrict.slots.map((sl) => ({
-            display: sl.display,
+            display: normalizeParticipantDisplay(sl.display),
             isFirst: sl.isFirst,
             isFemale: Boolean(sl.isFemale),
           }));
@@ -593,11 +609,11 @@
         if (!luForSlots) return merged;
 
         merged.slots = merged.slots.map((slot, i) => {
-          if (slot.display) return slot;
+          if (slotHasName(slot)) return slot;
           const f = luForSlots.slots[i];
-          if (f && f.display) {
+          if (f && slotHasName(f)) {
             return {
-              display: f.display,
+              display: normalizeParticipantDisplay(f.display),
               isFirst: f.isFirst,
               isFemale: Boolean(f.isFemale),
             };
@@ -692,7 +708,7 @@
 
         const ul = document.createElement("ul");
         ul.className = "session__names";
-        const hasAnyone = s.slots.some((x) => x.display);
+        const hasAnyone = s.slots.some((x) => slotHasName(x));
         if (!hasAnyone) {
           const li = document.createElement("li");
           li.className = "session__row session__row--empty-row";
@@ -703,7 +719,8 @@
           s.slots.forEach((slot, index) => {
             const li = document.createElement("li");
             const num = index + 1;
-            const empty = !slot.display;
+            const display = normalizeParticipantDisplay(slot.display);
+            const empty = !display;
             li.className = "session__row";
             if (empty) li.classList.add("session__row--slot-empty");
             if (slot.isFirst && !empty) li.classList.add("session__row--first");
@@ -716,7 +733,7 @@
 
             const nameEl = document.createElement("span");
             nameEl.className = "session__name";
-            nameEl.textContent = empty ? "" : slot.display;
+            nameEl.textContent = display;
 
             li.appendChild(numEl);
             li.appendChild(nameEl);
