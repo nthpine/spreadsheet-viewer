@@ -10,7 +10,7 @@
  *    - アクセスできるユーザー: 全員（または組織内）
  * 4. 発行された URL を index.html の GAS_WEB_APP_URL に貼る。
  *
- * セル書式: 背景オレンジ＝初参加、文字色の赤系＝女性（閾値は isFirstTimeBackground_ / isFemaleFontColor_ で調整）。
+ * セル書式: 背景 #ff9900 ＝初参加、文字色 #ff0000 ＝女性。
  *
  * エンドポイント:
  * - GET  ?sheet=YYYYMM  または ?sheet=参加者
@@ -112,47 +112,25 @@ function isSessionCountLabel_(s) {
   return s === "開催回数" || s.indexOf("開催回数") === 0;
 }
 
-function hexToRgb01_(hex) {
-  hex = String(hex || "")
+function normalizeHex6_(hex) {
+  var h = String(hex || "")
+    .trim()
     .replace(/^#/, "")
-    .trim();
-  if (!hex) return null;
-  if (hex.length === 3) {
-    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    .toLowerCase();
+  if (h.length === 3) {
+    h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
   }
-  if (hex.length !== 6) return null;
-  return {
-    r: parseInt(hex.substring(0, 2), 16) / 255,
-    g: parseInt(hex.substring(2, 4), 16) / 255,
-    b: parseInt(hex.substring(4, 6), 16) / 255,
-  };
+  return h.length === 6 ? h : "";
 }
 
-/**
- * オレンジ系の塗りつぶしを初参加とみなす（#ff6b35 付近を想定）。
- * 調整したい場合は閾値を変えるか、セルに (初) などの文字も併用してください。
- */
+/** 初参加セル背景: #ff9900（スプレッドシートと同一） */
 function isFirstTimeBackground_(hex) {
-  var h = String(hex || "").toLowerCase();
-  if (!h || h === "#ffffff" || h === "#fff") return false;
-  var rgb = hexToRgb01_(h);
-  if (!rgb) return false;
-  return rgb.r > 0.82 && rgb.g > 0.22 && rgb.g < 0.78 && rgb.b < 0.45;
+  return normalizeHex6_(hex) === "ff9900";
 }
 
-/**
- * 文字色が赤系のとき女性として扱う（既定の黒・グレーは除外）。
- */
+/** 女性の文字色: #ff0000（スプレッドシートと同一） */
 function isFemaleFontColor_(hex) {
-  var h = String(hex || "").toLowerCase();
-  if (!h || h === "#000000" || h === "#000") return false;
-  var rgb = hexToRgb01_(h);
-  if (!rgb) return false;
-  if (rgb.r < 0.48) return false;
-  if (rgb.r <= rgb.g + 0.06) return false;
-  if (rgb.r <= rgb.b + 0.06) return false;
-  if (Math.abs(rgb.r - rgb.g) < 0.04 && Math.abs(rgb.r - rgb.b) < 0.04) return false;
-  return rgb.r > 0.52 && rgb.g < 0.45 && rgb.b < 0.45;
+  return normalizeHex6_(hex) === "ff0000";
 }
 
 function parseParticipantText_(raw) {

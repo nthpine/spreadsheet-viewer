@@ -279,6 +279,7 @@
     /**
      * 本日に最も近い開催日の列を強調（本日を含む未来があれば最小日＝次回／本日）。
      * 未来がなければ、本日より前で最も新しい日＝直近の開催。
+     * 本日開催はカード背景を黄色系（バッジ文言なし）。次回／直近のみバッジ表示。
      */
     function annotateNearestSessions(sessions, ymSix) {
       if (!sessions || !sessions.length) return sessions;
@@ -316,11 +317,7 @@
       if (!targetDay) return sessions;
 
       const label =
-        mode === "today"
-          ? "本日開催"
-          : mode === "next"
-            ? "次回開催"
-            : "直近の開催";
+        mode === "next" ? "次回開催" : mode === "past" ? "直近の開催" : "";
 
       return sessions.map((s) => {
         const dt = parseSessionDateFromCell(s.date, ymSix);
@@ -329,7 +326,8 @@
         return {
           ...s,
           highlightNext: hit,
-          highlightLabel: hit ? label : "",
+          highlightKind: hit ? mode : "",
+          highlightLabel: hit && label ? label : "",
         };
       });
     }
@@ -647,7 +645,11 @@
         const card = document.createElement("article");
         card.className = "session";
         if (s.highlightNext) {
-          card.classList.add("session--highlight-next");
+          if (s.highlightKind === "today") {
+            card.classList.add("session--highlight-today");
+          } else {
+            card.classList.add("session--highlight-next");
+          }
         }
 
         const head = document.createElement("div");
