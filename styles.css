@@ -79,6 +79,19 @@ header {
   gap: 0.35rem;
 }
 
+.controls-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 1.5rem;
+}
+
+.controls__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
 .controls label {
   font-size: 0.75rem;
   font-weight: 600;

@@ -16,9 +16,15 @@
         <h1>NORTH PINE 参加者リスト</h1>
         <p>シートを切り替えて各回の日程・場所・参加者を表示します。</p>
       </div>
-      <div class="controls">
-        <label for="sheet-select">表示する月</label>
-        <select id="sheet-select" aria-label="シートを選択"></select>
+      <div class="controls controls-row">
+        <div class="controls__group">
+          <label for="sheet-select-upcoming">今後の予定</label>
+          <select id="sheet-select-upcoming" aria-label="今後の予定の月シートを選択"></select>
+        </div>
+        <div class="controls__group">
+          <label for="sheet-select-past">過去の月</label>
+          <select id="sheet-select-past" aria-label="過去の月シートを選択"></select>
+        </div>
       </div>
     </header>
 
@@ -50,6 +56,12 @@
     const SHEET_PROBE_FROM_YEAR = 2025;
     const SHEET_PROBE_FROM_MONTH = 1;
 
+    /**
+     * 今日の月より後の YYYYMM シートを、最大何ヶ月先まで試すか。
+     * 例: 202605 を追加する場合など、未来の月シートをプルダウンに出すために使う。
+     */
+    const SHEET_PROBE_FUTURE_MONTHS = 24;
+
     /** シート一覧のキャッシュ（ミリ秒） */
     const SHEET_LIST_CACHE_MS = 60 * 60 * 1000;
 
@@ -68,17 +80,49 @@
       return out;
     }
 
-    /** 今日までの YYYYMM 候補（未来の月は含めない） */
-    function sheetCandidatesUpToToday() {
+    /** ローカル日付の「今月」を YYYYMM 6 桁で返す */
+    function currentYmSix() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      return `${y}${String(m).padStart(2, "0")}`;
+    }
+
+    /** プローブ開始月から「今月＋未来 N ヶ月」までの YYYYMM 候補（202605 なども含む） */
+    function sheetCandidatesForDiscovery() {
       const now = new Date();
       const ty = now.getFullYear();
       const tm = now.getMonth() + 1;
+      let endY = ty;
+      let endM = tm + SHEET_PROBE_FUTURE_MONTHS;
+      while (endM > 12) {
+        endM -= 12;
+        endY += 1;
+      }
       return sheetNamesRange(
         SHEET_PROBE_FROM_YEAR,
         SHEET_PROBE_FROM_MONTH,
-        ty,
-        tm,
+        endY,
+        endM,
       );
+    }
+
+    /**
+     * 発見した月シート一覧を、「今月」基準で分割する。
+     * ym >= 今月 → 今後の予定（本日を含む当月以降）、それより前 → 過去の月。
+     */
+    function splitMonthSheetsByCurrentMonth(sheetIds) {
+      const cur = currentYmSix();
+      const past = [];
+      const upcoming = [];
+      for (const ym of sheetIds) {
+        if (!/^\d{6}$/.test(ym)) continue;
+        if (ym >= cur) upcoming.push(ym);
+        else past.push(ym);
+      }
+      past.sort((a, b) => b.localeCompare(a));
+      upcoming.sort((a, b) => a.localeCompare(b));
+      return { past, upcoming };
     }
 
     function csvLooksValid(text) {
@@ -105,7 +149,7 @@
     }
 
     async function discoverMonthSheets() {
-      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v3`;
+      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v4`;
       try {
         const raw = sessionStorage.getItem(cacheKey);
         if (raw) {
@@ -121,7 +165,7 @@
         /* ignore */
       }
 
-      const candidates = sheetCandidatesUpToToday();
+      const candidates = sheetCandidatesForDiscovery();
       const batchSize = 6;
       const found = [];
       for (let i = 0; i < candidates.length; i += batchSize) {
@@ -660,7 +704,8 @@
 
     const statusEl = document.getElementById("status");
     const sessionsEl = document.getElementById("sessions");
-    const selectEl = document.getElementById("sheet-select");
+    const selectPastEl = document.getElementById("sheet-select-past");
+    const selectUpcomingEl = document.getElementById("sheet-select-upcoming");
 
     function setStatus(kind, message) {
       statusEl.className = "status is-visible";
@@ -820,14 +865,69 @@
       }
     }
 
-    function fillMonthSelect(sheetIds) {
-      selectEl.innerHTML = "";
-      for (const name of sheetIds) {
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = formatSheetLabel(name);
-        selectEl.appendChild(opt);
+    /**
+     * 過去／今後の2プルダウンを埋める。
+     * 先頭に value="" の「—」を置き、どちらか一方だけ選択する想定。
+     */
+    function fillMonthSelects(pastIds, upcomingIds) {
+      function fill(selectEl, ids, withBlank) {
+        selectEl.innerHTML = "";
+        if (!ids.length) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "（該当なし）";
+          opt.disabled = true;
+          selectEl.appendChild(opt);
+          selectEl.disabled = true;
+          return;
+        }
+        selectEl.disabled = false;
+        if (withBlank) {
+          const b = document.createElement("option");
+          b.value = "";
+          b.textContent = "—";
+          selectEl.appendChild(b);
+        }
+        for (const name of ids) {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = formatSheetLabel(name);
+          selectEl.appendChild(opt);
+        }
       }
+
+      const bothKinds = pastIds.length && upcomingIds.length;
+      fill(selectPastEl, pastIds, bothKinds);
+      fill(selectUpcomingEl, upcomingIds, bothKinds);
+    }
+
+    function wireSheetSelects() {
+      const onChange = (source) => {
+        const pv = selectPastEl.value;
+        const uv = selectUpcomingEl.value;
+        if (source === "past" && pv) {
+          if (selectUpcomingEl.options.length && !selectUpcomingEl.disabled) {
+            selectUpcomingEl.value = "";
+          }
+          loadSheet(pv);
+          return;
+        }
+        if (source === "upcoming" && uv) {
+          if (selectPastEl.options.length && !selectPastEl.disabled) {
+            selectPastEl.value = "";
+          }
+          loadSheet(uv);
+        }
+      };
+      selectPastEl.addEventListener("change", () => onChange("past"));
+      selectUpcomingEl.addEventListener("change", () => onChange("upcoming"));
+    }
+
+    /** 初期表示で選ぶシート名（今後があれば最も近い月、なければ直近の過去） */
+    function pickDefaultSheet(pastIds, upcomingIds) {
+      if (upcomingIds.length) return upcomingIds[0];
+      if (pastIds.length) return pastIds[0];
+      return "";
     }
 
     async function bootstrap() {
@@ -841,12 +941,21 @@
           );
           return;
         }
-        fillMonthSelect(list);
-        selectEl.addEventListener("change", () => {
-          loadSheet(selectEl.value);
-        });
+        const { past, upcoming } = splitMonthSheetsByCurrentMonth(list);
+        fillMonthSelects(past, upcoming);
+        wireSheetSelects();
+        const defaultName = pickDefaultSheet(past, upcoming);
+        if (!defaultName) {
+          setStatus("error", "表示できる月シートがありません。");
+          return;
+        }
+        if (upcoming.length) {
+          selectUpcomingEl.value = defaultName;
+        } else {
+          selectPastEl.value = defaultName;
+        }
         setStatus("hidden", "");
-        await loadSheet(list[0]);
+        await loadSheet(defaultName);
       } catch (e) {
         setStatus("error", "初期化に失敗しました。ネットワークを確認してください。");
         console.error(e);
