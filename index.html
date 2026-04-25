@@ -251,7 +251,7 @@
     }
 
     /**
-     * 日付セル（例: 4/15(水)）を Date にする。年は月シート名 YYYYMM を優先。
+     * 日付セル（例: 4/15(水)、3月30日、2026/4/25）を Date にする。年は月シート名 YYYYMM を補完。
      */
     function parseSessionDateFromCell(dateStr, ymSix) {
       const t = String(dateStr || "")
@@ -265,7 +265,15 @@
         const dt = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
         return Number.isNaN(dt.getTime()) ? null : dt;
       }
-      const md = t.match(/^(\d{1,2})\/(\d{1,2})/);
+      const jp = t.match(/(\d{1,2})月(\d{1,2})日/);
+      if (jp && ymSix && /^\d{6}$/.test(ymSix)) {
+        const yy = +ymSix.slice(0, 4);
+        const mo = +jp[1] - 1;
+        const da = +jp[2];
+        const dt = new Date(yy, mo, da);
+        return Number.isNaN(dt.getTime()) ? null : dt;
+      }
+      const md = t.match(/(\d{1,2})[\/．\.](\d{1,2})/);
       if (md && ymSix && /^\d{6}$/.test(ymSix)) {
         const yy = +ymSix.slice(0, 4);
         const mo = +md[1] - 1;
@@ -276,60 +284,79 @@
       return null;
     }
 
+    /** 日付文字列が「本日の月日」と一致するか（パース失敗時のフォールバック） */
+    function dateCellLooksLikeToday(dateStr, today0) {
+      const t = String(dateStr || "").normalize("NFKC");
+      if (!t) return false;
+      const y = today0.getFullYear();
+      const m = today0.getMonth() + 1;
+      const d = today0.getDate();
+      if (
+        t.includes(`${y}年${m}月${d}日`) ||
+        t.includes(`${y}/${m}/${d}`) ||
+        t.includes(`${y}-${m}-${d}`)
+      ) {
+        return true;
+      }
+      const re = new RegExp(
+        `(^|[^0-9])0*${m}[/.．月]0*${d}(?:日|[(（]|[^0-9]|$)`,
+      );
+      return re.test(t);
+    }
+
+    function sessionHitsTargetDay(s, targetDay, ymSix) {
+      const dt = parseSessionDateFromCell(s.date, ymSix);
+      if (dt && sameLocalCalendarDay(startOfLocalDay(dt), targetDay)) {
+        return true;
+      }
+      return dateCellLooksLikeToday(s.date, targetDay);
+    }
+
     /**
-     * 本日に最も近い開催日の列を強調（本日を含む未来があれば最小日＝次回／本日）。
-     * 未来がなければ、本日より前で最も新しい日＝直近の開催。
-     * 本日開催はカード背景を黄色系（バッジ文言なし）。次回／直近のみバッジ表示。
+     * 本日の列を最優先。次に「本日以降で最も近い日」、なければ「本日より前で最も新しい日」。
+     * 強調はすべて黄色背景（文言バッジなし）。
      */
     function annotateNearestSessions(sessions, ymSix) {
       if (!sessions || !sessions.length) return sessions;
       if (!ymSix || !/^\d{6}$/.test(ymSix)) return sessions;
 
       const today = startOfLocalDay(new Date());
-      const withDt = sessions
-        .map((s) => ({
-          s,
-          dt: parseSessionDateFromCell(s.date, ymSix),
-        }))
-        .filter((x) => x.dt);
+      const rows = sessions.map((s) => ({
+        s,
+        dt: parseSessionDateFromCell(s.date, ymSix),
+      }));
 
-      if (!withDt.length) return sessions;
-
+      const withDt = rows.filter((x) => x.dt);
       let targetDay = null;
-      let mode = "";
 
-      const futureOrToday = withDt
-        .filter((x) => startOfLocalDay(x.dt) >= today)
-        .sort((a, b) => a.dt - b.dt);
-      if (futureOrToday.length) {
-        targetDay = startOfLocalDay(futureOrToday[0].dt);
-        mode = sameLocalCalendarDay(targetDay, today) ? "today" : "next";
-      } else {
-        const past = withDt
-          .filter((x) => startOfLocalDay(x.dt) < today)
-          .sort((a, b) => b.dt - a.dt);
-        if (past.length) {
-          targetDay = startOfLocalDay(past[0].dt);
-          mode = "past";
+      const onCalendarToday = rows.filter(
+        (x) =>
+          sessionHitsTargetDay(x.s, today, ymSix),
+      );
+      if (onCalendarToday.length) {
+        targetDay = today;
+      } else if (withDt.length) {
+        const futureOrToday = withDt
+          .filter((x) => startOfLocalDay(x.dt) >= today)
+          .sort((a, b) => a.dt - b.dt);
+        if (futureOrToday.length) {
+          targetDay = startOfLocalDay(futureOrToday[0].dt);
+        } else {
+          const past = withDt
+            .filter((x) => startOfLocalDay(x.dt) < today)
+            .sort((a, b) => b.dt - a.dt);
+          if (past.length) {
+            targetDay = startOfLocalDay(past[0].dt);
+          }
         }
       }
 
       if (!targetDay) return sessions;
 
-      const label =
-        mode === "next" ? "次回開催" : mode === "past" ? "直近の開催" : "";
-
-      return sessions.map((s) => {
-        const dt = parseSessionDateFromCell(s.date, ymSix);
-        const hit =
-          Boolean(dt) && sameLocalCalendarDay(startOfLocalDay(dt), targetDay);
-        return {
-          ...s,
-          highlightNext: hit,
-          highlightKind: hit ? mode : "",
-          highlightLabel: hit && label ? label : "",
-        };
-      });
+      return sessions.map((s) => ({
+        ...s,
+        highlightNext: sessionHitsTargetDay(s, targetDay, ymSix),
+      }));
     }
 
     /** 簡易 CSV パーサ（ダブルクォート・エスケープ対応） */
@@ -645,11 +672,7 @@
         const card = document.createElement("article");
         card.className = "session";
         if (s.highlightNext) {
-          if (s.highlightKind === "today") {
-            card.classList.add("session--highlight-today");
-          } else {
-            card.classList.add("session--highlight-next");
-          }
+          card.classList.add("session--highlight-nearest");
         }
 
         const head = document.createElement("div");
@@ -659,14 +682,6 @@
         h2.className = "session__date";
         h2.textContent = s.date;
         head.appendChild(h2);
-
-        if (s.highlightNext && s.highlightLabel) {
-          const nextBadge = document.createElement("span");
-          nextBadge.className = "session__badge-next";
-          nextBadge.textContent = s.highlightLabel;
-          nextBadge.title = s.highlightLabel;
-          head.appendChild(nextBadge);
-        }
 
         card.appendChild(head);
 

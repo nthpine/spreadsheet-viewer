@@ -13,8 +13,6 @@
   --female-accent: #f472b6;
   --female-bg: rgba(244, 114, 182, 0.1);
   --female-border: rgba(244, 114, 182, 0.55);
-  --next-ring: rgba(56, 189, 248, 0.55);
-  --next-bg: rgba(56, 189, 248, 0.08);
   --today-bg: rgba(250, 204, 21, 0.22);
   --today-bg-deep: rgba(234, 179, 8, 0.14);
   --today-ring: rgba(250, 204, 21, 0.65);
@@ -203,25 +201,8 @@ select:focus {
   opacity: 0.9;
 }
 
-.session--highlight-next {
-  border-color: var(--next-ring);
-  background: linear-gradient(
-      165deg,
-      var(--next-bg),
-      var(--bg-card) 42%
-    ),
-    var(--bg-card);
-  box-shadow:
-    0 0 0 1px rgba(56, 189, 248, 0.2),
-    var(--shadow);
-}
-
-.session--highlight-next::before {
-  background: linear-gradient(90deg, #38bdf8, #22d3ee, #a5f3fc);
-  opacity: 1;
-}
-
-.session--highlight-today {
+/* 本日／次回／直近のいずれかで強調する列（黄色・文言バッジなし） */
+.session--highlight-nearest {
   border-color: var(--today-ring);
   background: linear-gradient(
       168deg,
@@ -235,7 +216,7 @@ select:focus {
     var(--shadow);
 }
 
-.session--highlight-today::before {
+.session--highlight-nearest::before {
   background: linear-gradient(90deg, #facc15, #eab308, #fde047);
   opacity: 1;
 }
@@ -253,18 +234,6 @@ select:focus {
   font-weight: 700;
   margin: 0;
   color: var(--text);
-}
-
-.session__badge-next {
-  flex: 0 0 auto;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 0.2rem 0.45rem;
-  border-radius: 6px;
-  color: #e0f2fe;
-  background: linear-gradient(135deg, #0284c7, #0ea5e9);
-  line-height: 1.2;
 }
 
 .session__place {

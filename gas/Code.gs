@@ -10,7 +10,7 @@
  *    - アクセスできるユーザー: 全員（または組織内）
  * 4. 発行された URL を index.html の GAS_WEB_APP_URL に貼る。
  *
- * セル書式: 背景 #ff9900 ＝初参加、文字色 #ff0000 ＝女性。
+ * セル書式: 背景 #ff9900 付近＝初参加、文字色 #ff0000 付近＝女性（getBackgrounds / getFontColors の表記差を吸収）。
  *
  * エンドポイント:
  * - GET  ?sheet=YYYYMM  または ?sheet=参加者
@@ -112,25 +112,56 @@ function isSessionCountLabel_(s) {
   return s === "開催回数" || s.indexOf("開催回数") === 0;
 }
 
-function normalizeHex6_(hex) {
-  var h = String(hex || "")
-    .trim()
-    .replace(/^#/, "")
-    .toLowerCase();
-  if (h.length === 3) {
+/**
+ * スプレッドシートが返す色文字列（#RRGGBB / #AARRGGBB / rgb(...)）を RGB255 にする。
+ */
+function parseColorToRgb255_(s) {
+  s = String(s || "").trim();
+  if (!s) return null;
+  var mRgb = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+  if (mRgb) {
+    return {
+      r: Math.round(Number(mRgb[1])),
+      g: Math.round(Number(mRgb[2])),
+      b: Math.round(Number(mRgb[3])),
+    };
+  }
+  var h = s.replace(/^#/, "").toLowerCase();
+  if (/^[0-9a-f]{8}$/.test(h)) {
+    h = h.substring(2);
+  }
+  if (/^[0-9a-f]{3}$/.test(h)) {
     h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
   }
-  return h.length === 6 ? h : "";
+  if (!/^[0-9a-f]{6}$/.test(h)) return null;
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16),
+  };
 }
 
-/** 初参加セル背景: #ff9900（スプレッドシートと同一） */
+function nearRgb_(c, r, g, b, tol) {
+  if (!c) return false;
+  return (
+    Math.abs(c.r - r) <= tol &&
+    Math.abs(c.g - g) <= tol &&
+    Math.abs(c.b - b) <= tol
+  );
+}
+
+/** 初参加セル背景: #ff9900 付近（テーマ変換の誤差を許容） */
 function isFirstTimeBackground_(hex) {
-  return normalizeHex6_(hex) === "ff9900";
+  var c = parseColorToRgb255_(hex);
+  if (!c) return false;
+  return nearRgb_(c, 255, 153, 0, 18);
 }
 
-/** 女性の文字色: #ff0000（スプレッドシートと同一） */
+/** 女性の文字色: #ff0000 付近 */
 function isFemaleFontColor_(hex) {
-  return normalizeHex6_(hex) === "ff0000";
+  var c = parseColorToRgb255_(hex);
+  if (!c) return false;
+  return nearRgb_(c, 255, 0, 0, 10);
 }
 
 function parseParticipantText_(raw) {
