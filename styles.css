@@ -13,9 +13,6 @@
   --female-accent: #f472b6;
   --female-bg: rgba(244, 114, 182, 0.1);
   --female-border: rgba(244, 114, 182, 0.55);
-  --today-bg: rgba(250, 204, 21, 0.22);
-  --today-bg-deep: rgba(234, 179, 8, 0.14);
-  --today-ring: rgba(250, 204, 21, 0.65);
   --radius: 14px;
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
@@ -244,26 +241,6 @@ select:focus {
   height: 3px;
   background: linear-gradient(90deg, var(--accent), #f7c948);
   opacity: 0.9;
-}
-
-/* 本日／次回／直近のいずれかで強調する列（黄色・文言バッジなし） */
-.session--highlight-nearest {
-  border-color: var(--today-ring);
-  background: linear-gradient(
-      168deg,
-      var(--today-bg),
-      var(--today-bg-deep) 38%,
-      var(--bg-card) 55%
-    ),
-    var(--bg-card);
-  box-shadow:
-    0 0 0 1px rgba(250, 204, 21, 0.25),
-    var(--shadow);
-}
-
-.session--highlight-nearest::before {
-  background: linear-gradient(90deg, #facc15, #eab308, #fde047);
-  opacity: 1;
 }
 
 .session__head {

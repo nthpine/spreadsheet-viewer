@@ -16,6 +16,7 @@
  * - GET  ?sheet=YYYYMM  または ?sheet=参加者
  * - POST JSON: { "sheet": "202604" } または form: sheet=202604
  * - GET  ?bundle=1&months=202604,202605&lookup=参加者 … 複数月＋参加者を1レスポンスで返す（高速化）
+ * - GET  ?bundle=1&tabs=1&includeSecond=0|1&lookup=参加者 … 左から1番目のシート（includeSecond=1 のときは2番目も）＋参加者
  */
 
 var SPREADSHEET_ID_FALLBACK = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
@@ -51,6 +52,9 @@ function doPost(e) {
 function handleRequest_(e) {
   try {
     if (e && e.parameter && String(e.parameter.bundle || "") === "1") {
+      if (String(e.parameter.tabs || "") === "1") {
+        return handleTabOrderBundle_(e);
+      }
       return handleBundleRequest_(e);
     }
     var sheetName = extractSheetName_(e);
@@ -135,6 +139,59 @@ function handleBundleRequest_(e) {
     bundle: true,
     layout: LAYOUT,
     sheets: sheets,
+    lookup: {
+      sheet: lookupName,
+      sessions: lookupSessions,
+    },
+  });
+}
+
+/**
+ * 左から1番目（必須）と、includeSecond=1 のとき2番目のシートのみ読む（軽量化）。
+ * GET: ?bundle=1&tabs=1&includeSecond=0&lookup=参加者
+ */
+function handleTabOrderBundle_(e) {
+  var lookupName = "参加者";
+  if (e.parameter && e.parameter.lookup) {
+    lookupName = String(e.parameter.lookup).trim() || lookupName;
+  }
+  assertAllowedSheetName_(lookupName);
+
+  var ss = SpreadsheetApp.openById(getSpreadsheetId_());
+  var all = ss.getSheets();
+  if (!all.length) {
+    throw new Error("シートがありません");
+  }
+  var includeSecond =
+    e.parameter && String(e.parameter.includeSecond) === "1";
+
+  var outList = [];
+  outList.push({
+    tabIndex: 0,
+    sheetName: all[0].getName(),
+    sessions: buildSessionsForSheetObject_(all[0]),
+  });
+  if (includeSecond && all.length > 1) {
+    outList.push({
+      tabIndex: 1,
+      sheetName: all[1].getName(),
+      sessions: buildSessionsForSheetObject_(all[1]),
+    });
+  }
+
+  var lookupSessions = [];
+  try {
+    lookupSessions = buildSessionsForSheet_(lookupName);
+  } catch (err2) {
+    lookupSessions = [];
+  }
+
+  return jsonOutput_({
+    ok: true,
+    bundle: true,
+    tabMode: true,
+    layout: LAYOUT,
+    sheets: outList,
     lookup: {
       sheet: lookupName,
       sessions: lookupSessions,
@@ -270,7 +327,10 @@ function buildSessionsForSheet_(sheetName) {
   if (!sh) {
     throw new Error("シートが見つかりません: " + sheetName);
   }
+  return buildSessionsForSheetObject_(sh);
+}
 
+function buildSessionsForSheetObject_(sh) {
   var lastRow = Math.max(sh.getLastRow(), LAYOUT.nameEndRow);
   var lastCol = Math.max(sh.getLastColumn(), 1);
   var r = sh.getRange(1, 1, lastRow, lastCol);

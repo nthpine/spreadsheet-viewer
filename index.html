@@ -37,7 +37,7 @@
   </div>
 
   <script>
-    /** スプレッドシート ID（月シートは YYYYMM 名で存在するものだけ対象） */
+    /** スプレッドシート ID（GAS 時は左から1〜2枚目のシート。GAS なし時は YYYYMM 名シートを探索） */
     const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
 
     /**
@@ -88,6 +88,15 @@
     function currentYmSix() {
       const n = new Date();
       return `${n.getFullYear()}${String(n.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    /** 指定 YYYYMM の翌月（タブ2枚目＝次月プレビュー用の日付補完キー） */
+    function ymSixPlusOneMonth(ymSix) {
+      if (!/^\d{6}$/.test(ymSix)) return currentYmSix();
+      const y = +ymSix.slice(0, 4);
+      const m = +ymSix.slice(4, 6) - 1;
+      const d = new Date(y, m + 1, 1);
+      return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
     }
 
     /** 今月から未来 N ヶ月までの YYYYMM 候補のみ（過去月は試さない） */
@@ -274,14 +283,6 @@
       return x;
     }
 
-    function sameLocalCalendarDay(a, b) {
-      return (
-        a.getFullYear() === b.getFullYear() &&
-        a.getMonth() === b.getMonth() &&
-        a.getDate() === b.getDate()
-      );
-    }
-
     /**
      * 日付セル（例: 4/15(水)、3月30日、2026/4/25）を Date にする。年は月シート名 YYYYMM を補完。
      */
@@ -319,104 +320,6 @@
         return Number.isNaN(dt.getTime()) ? null : dt;
       }
       return null;
-    }
-
-    /**
-     * 日付文字列が refDay の暦日と一致するか（パース失敗時のフォールバック）。
-     */
-    function dateCellLooksLikeCalendarDay(dateStr, refDay) {
-      const t = String(dateStr || "").normalize("NFKC");
-      if (!t || !refDay) return false;
-      const y = refDay.getFullYear();
-      const m = refDay.getMonth() + 1;
-      const d = refDay.getDate();
-      if (
-        t.includes(`${y}年${m}月${d}日`) ||
-        t.includes(`${y}/${m}/${d}`) ||
-        t.includes(`${y}-${m}-${d}`)
-      ) {
-        return true;
-      }
-      const re = new RegExp(
-        `(^|[^0-9])0*${m}[/.．月]0*${d}(?:日|[(（]|[^0-9]|$)`,
-      );
-      return re.test(t);
-    }
-
-    function sessionHitsTargetDay(s, targetDay, ymSix) {
-      const dt = parseSessionDateFromCell(s.date, ymSix);
-      if (dt && sameLocalCalendarDay(startOfLocalDay(dt), targetDay)) {
-        return true;
-      }
-      return dateCellLooksLikeCalendarDay(s.date, targetDay);
-    }
-
-    /**
-     * 本日の列、なければ「本日以降で最も近い日」の列だけ黄色強調。
-     * 過去日のみのシートでは強調しない。
-     */
-    function annotateNearestSessions(sessions, ymSix) {
-      if (!sessions || !sessions.length) return sessions;
-      if (!ymSix || !/^\d{6}$/.test(ymSix)) return sessions;
-
-      const today = startOfLocalDay(new Date());
-      const rows = sessions.map((s) => ({
-        s,
-        dt: parseSessionDateFromCell(s.date, ymSix),
-      }));
-
-      const withDt = rows.filter((x) => x.dt);
-      let targetDay = null;
-
-      const onCalendarToday = rows.filter((x) =>
-        sessionHitsTargetDay(x.s, today, ymSix),
-      );
-      if (onCalendarToday.length) {
-        targetDay = today;
-      } else if (withDt.length) {
-        const futureOrToday = withDt
-          .filter((x) => startOfLocalDay(x.dt) >= today)
-          .sort((a, b) => a.dt - b.dt);
-        if (futureOrToday.length) {
-          targetDay = startOfLocalDay(futureOrToday[0].dt);
-        }
-      }
-
-      if (!targetDay) {
-        return sessions.map((s) => ({ ...s, highlightNext: false }));
-      }
-
-      return sessions.map((s) => ({
-        ...s,
-        highlightNext: sessionHitsTargetDay(s, targetDay, ymSix),
-      }));
-    }
-
-    /**
-     * 複数月シートにまたがる「今後の予定」一覧用。
-     * 本日を含む列、なければ全体で最も近い未来日の列を強調する。
-     */
-    function annotateNearestAcrossMany(entries) {
-      if (!entries || !entries.length) return [];
-      const today = startOfLocalDay(new Date());
-      let targetDay = null;
-      const onToday = entries.filter((e) =>
-        sessionHitsTargetDay(e.session, today, e.sheetName),
-      );
-      if (onToday.length) {
-        targetDay = today;
-      } else {
-        const fut = entries
-          .filter((e) => e.dt && startOfLocalDay(e.dt) >= today)
-          .sort((a, b) => a.dt - b.dt);
-        if (fut.length) targetDay = startOfLocalDay(fut[0].dt);
-      }
-      return entries.map((e) => ({
-        ...e.session,
-        highlightNext: targetDay
-          ? sessionHitsTargetDay(e.session, targetDay, e.sheetName)
-          : false,
-      }));
     }
 
     /** 簡易 CSV パーサ（ダブルクォート・エスケープ対応） */
@@ -755,9 +658,6 @@
       for (const s of sessions) {
         const card = document.createElement("article");
         card.className = "session";
-        if (s.highlightNext) {
-          card.classList.add("session--highlight-nearest");
-        }
 
         const head = document.createElement("div");
         head.className = "session__head";
@@ -868,7 +768,7 @@
       if (lookupSessions && lookupSessions.length) {
         sessions = mergeSessionsFromLookup(sessions, lookupSessions);
       }
-      return annotateNearestSessions(sessions, sheetName);
+      return sessions;
     }
 
     function scrollSessionsToStart() {
@@ -877,6 +777,13 @@
 
     function bundleCacheKey(sheetIds) {
       return `bundle_${SPREADSHEET_ID}_${[...sheetIds].sort().join(",")}`;
+    }
+
+    /** タブ順バンドル用 IndexedDB キー（日付と 1/2 枚で無効化） */
+    function bundleTabCacheKey(includeSecond) {
+      const d = new Date();
+      const day = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+      return `bundle_tabs_${SPREADSHEET_ID}_${day}_${includeSecond ? "2" : "1"}`;
     }
 
     function openBundleIdb_() {
@@ -943,6 +850,32 @@
       }
     }
 
+    /** GAS: 左から1番目（＋本日が23日以降なら2番目）＋参加者 */
+    async function fetchTabBundleFromGas(includeSecond) {
+      const base = gasWebAppBase();
+      if (!base) return null;
+      const q = `bundle=1&tabs=1&includeSecond=${includeSecond ? "1" : "0"}&lookup=${encodeURIComponent(LOOKUP_SHEET_NAME)}`;
+      const url = `${base}?${q}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const j = await res.json();
+        if (
+          !j ||
+          j.ok !== true ||
+          !j.bundle ||
+          !j.tabMode ||
+          !Array.isArray(j.sheets)
+        ) {
+          return null;
+        }
+        return j;
+      } catch (err) {
+        console.warn("tab bundle fetch failed", err);
+        return null;
+      }
+    }
+
     /** GAS bundle API（1 リクエストで複数月＋参加者） */
     async function fetchSessionBundleFromGas(monthSheetIds) {
       const base = gasWebAppBase();
@@ -953,7 +886,15 @@
         const res = await fetch(url);
         if (!res.ok) return null;
         const j = await res.json();
-        if (!j || j.ok !== true || !j.bundle || !j.sheets) return null;
+        if (
+          !j ||
+          j.ok !== true ||
+          !j.bundle ||
+          !j.sheets ||
+          Array.isArray(j.sheets)
+        ) {
+          return null;
+        }
         return j;
       } catch (err) {
         console.warn("bundle fetch failed", err);
@@ -977,7 +918,6 @@
         if (lookupSessions && lookupSessions.length) {
           list = mergeSessionsFromLookup(list, lookupSessions);
         }
-        list = annotateNearestSessions(list, sheetName);
         list = [...list].sort((a, b) => Number(a.col) - Number(b.col));
         list = filterSessionsFromTodayOnward(list, sheetName);
         if (!list.length) continue;
@@ -998,6 +938,64 @@
         allEntries,
         sessionsBySheet,
       };
+    }
+
+    /**
+     * タブ順 bundle（sheets は配列）→ sessionPlan。
+     * 1枚目は currentYmSix、2枚目はその翌月を日付パース用キーに使う。
+     */
+    function buildSessionPlanFromTabBundlePayload(j) {
+      const lookupRaw = (j.lookup && j.lookup.sessions) || [];
+      const lookupSessions = lookupRaw.length
+        ? normalizeGasSessions(lookupRaw)
+        : null;
+      const allEntries = [];
+      const sessionsBySheet = new Map();
+      const ym0 = currentYmSix();
+      const ym1 = ymSixPlusOneMonth(ym0);
+      const items = [...(j.sheets || [])].sort(
+        (a, b) => (a.tabIndex || 0) - (b.tabIndex || 0),
+      );
+      for (const item of items) {
+        const tabIndex = Number(item.tabIndex) || 0;
+        const ymHint = tabIndex === 0 ? ym0 : ym1;
+        let list = normalizeGasSessions(item.sessions || []);
+        if (lookupSessions && lookupSessions.length) {
+          list = mergeSessionsFromLookup(list, lookupSessions);
+        }
+        list = [...list].sort((a, b) => Number(a.col) - Number(b.col));
+        list = filterSessionsFromTodayOnward(list, ymHint);
+        if (!list.length) continue;
+        if (!sessionsPlausibleForSheet(list, ymHint)) continue;
+        sessionsBySheet.set(ymHint, list);
+        const seenColInSheet = new Set();
+        for (const s of list) {
+          const dt = parseSessionDateFromCell(s.date, ymHint);
+          if (!dt) continue;
+          const colKey = `${ymHint}:${s.col}`;
+          if (seenColInSheet.has(colKey)) continue;
+          seenColInSheet.add(colKey);
+          allEntries.push({ sheetName: ymHint, session: s, dt });
+        }
+      }
+      return {
+        lookupSessions,
+        allEntries,
+        sessionsBySheet,
+      };
+    }
+
+    async function tryBuildSessionPlanFromTabs(includeSecond) {
+      const cacheKey = bundleTabCacheKey(includeSecond);
+      const cached = await readBundleCache(cacheKey);
+      if (cached && cached.tabMode && Array.isArray(cached.sheets)) {
+        const fromCache = buildSessionPlanFromTabBundlePayload(cached);
+        if (fromCache.sessionsBySheet.size) return fromCache;
+      }
+      const json = await fetchTabBundleFromGas(includeSecond);
+      if (!json) return null;
+      await writeBundleCache(cacheKey, json);
+      return buildSessionPlanFromTabBundlePayload(json);
     }
 
     /** パースした暦月がシート名 YYYYMM の月と一致するか（正しい月タブを優先する） */
@@ -1180,7 +1178,7 @@
         renderSessions([], "今後の予定がありません。");
         return;
       }
-      renderSessions(annotateNearestAcrossMany(entries));
+      renderSessions(entries.map((e) => e.session));
       scrollSessionsToStart();
     }
 
@@ -1208,6 +1206,24 @@
     }
 
     async function initializeFromSpreadsheet() {
+      if (gasWebAppBase()) {
+        const includeSecond = new Date().getDate() >= 23;
+        setStatus(
+          "loading",
+          includeSecond
+            ? "スプレッドシートの1番目・2番目のシートを読み込み中…"
+            : "スプレッドシートの1番目のシートを読み込み中…",
+        );
+        const tabPlan = await tryBuildSessionPlanFromTabs(includeSecond);
+        if (tabPlan && tabPlan.sessionsBySheet.size) {
+          sessionPlan = tabPlan;
+          wireRefreshBundleOnce();
+          renderUpcomingAll();
+          setStatus("hidden", "");
+          return;
+        }
+      }
+
       const list = await discoverMonthSheets();
       if (!list.length) {
         setStatus(
@@ -1245,7 +1261,12 @@
     }
 
     async function bootstrap() {
-      setStatus("loading", "スプレッドシート上のシートを確認中…");
+      setStatus(
+        "loading",
+        gasWebAppBase()
+          ? "スプレッドシートに接続中…"
+          : "スプレッドシート上のシートを確認中…",
+      );
       try {
         await initializeFromSpreadsheet();
       } catch (e) {
