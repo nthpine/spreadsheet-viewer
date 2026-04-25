@@ -880,12 +880,41 @@
       if (sessionsScrollEl) sessionsScrollEl.scrollLeft = 0;
     }
 
+    /** 同一暦日の重複排除用キー（ローカル日） */
+    function calendarDayKeyFromDate(dt) {
+      const x = startOfLocalDay(dt);
+      return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`;
+    }
+
+    /**
+     * 今後の予定で同じ暦日が複数列あるとき 1 枚だけ残す（先に来た列を採用）。
+     * すべて表示・プルダウン双方で使う。
+     */
+    function dedupeUpcomingEntriesByCalendarDay(entries) {
+      const seen = new Set();
+      const out = [];
+      for (const e of entries) {
+        if (!e.dt) continue;
+        const k = calendarDayKeyFromDate(e.dt);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(e);
+      }
+      return out;
+    }
+
+    /** 過去の月を選んだときの option value 接頭辞 */
+    const PAST_MONTH_PREFIX = "pastMonth:";
+
     /**
      * 発見済みの全 YYYYMM シートを読み、日付で過去／今後に分ける。
+     * sessionsBySheet … 月シートごとの全列（過去は月単位表示で使う）
      */
     async function buildSessionPlan(sheetIds) {
       const lookupSessions = await fetchLookupSessionsOnce();
       const allEntries = [];
+      const sessionsBySheet = new Map();
+
       for (let i = 0; i < sheetIds.length; i += SHEET_FETCH_CONCURRENCY) {
         const chunk = sheetIds.slice(i, i + SHEET_FETCH_CONCURRENCY);
         const parts = await Promise.all(
@@ -896,7 +925,9 @@
           ),
         );
         for (const { sheetName, sessions } of parts) {
-          for (const s of sessions || []) {
+          const list = [...(sessions || [])].sort((a, b) => a.col - b.col);
+          sessionsBySheet.set(sheetName, list);
+          for (const s of list) {
             const dt = parseSessionDateFromCell(s.date, sheetName);
             if (!dt) continue;
             allEntries.push({ sheetName, session: s, dt });
@@ -917,7 +948,13 @@
       );
       pastEntries.sort((a, b) => b.dt - a.dt);
 
-      return { lookupSessions, allEntries, pastEntries, upcomingEntries };
+      return {
+        lookupSessions,
+        allEntries,
+        pastEntries,
+        upcomingEntries,
+        sessionsBySheet,
+      };
     }
 
     function rebuildSessionSelects(plan) {
@@ -940,7 +977,10 @@
         allOpt.value = "__ALL__";
         allOpt.textContent = "すべて表示（日付順）";
         selectUpcomingEl.appendChild(allOpt);
-        for (const e of plan.upcomingEntries) {
+        const upDeduped = dedupeUpcomingEntriesByCalendarDay(
+          plan.upcomingEntries,
+        );
+        for (const e of upDeduped) {
           const opt = document.createElement("option");
           opt.value = `${e.sheetName}:${e.session.col}`;
           opt.textContent = e.session.date;
@@ -963,28 +1003,14 @@
         selectPastEl.disabled = true;
       } else {
         selectPastEl.disabled = false;
-        const bySheet = new Map();
-        for (const e of plan.pastEntries) {
-          if (!bySheet.has(e.sheetName)) bySheet.set(e.sheetName, []);
-          bySheet.get(e.sheetName).push(e);
-        }
-        const sheetOrder = [...bySheet.keys()].sort((a, b) =>
-          b.localeCompare(a),
-        );
-        for (const sh of sheetOrder) {
-          const og = document.createElement("optgroup");
-          og.label = formatSheetLabel(sh);
-          const rows = bySheet
-            .get(sh)
-            .slice()
-            .sort((a, b) => b.dt - a.dt);
-          for (const e of rows) {
-            const opt = document.createElement("option");
-            opt.value = `${e.sheetName}:${e.session.col}`;
-            opt.textContent = e.session.date;
-            og.appendChild(opt);
-          }
-          selectPastEl.appendChild(og);
+        const pastSheets = [
+          ...new Set(plan.pastEntries.map((e) => e.sheetName)),
+        ].sort((a, b) => b.localeCompare(a));
+        for (const sh of pastSheets) {
+          const opt = document.createElement("option");
+          opt.value = `${PAST_MONTH_PREFIX}${sh}`;
+          opt.textContent = formatSheetLabel(sh);
+          selectPastEl.appendChild(opt);
         }
       }
     }
@@ -997,7 +1023,19 @@
         );
         return;
       }
-      renderSessions(annotateNearestAcrossMany(sessionPlan.upcomingEntries));
+      const deduped = dedupeUpcomingEntriesByCalendarDay(
+        sessionPlan.upcomingEntries,
+      );
+      renderSessions(annotateNearestAcrossMany(deduped));
+      scrollSessionsToStart();
+    }
+
+    /** 過去: その月シートの列をすべて表示（シート上の列順） */
+    function renderPastMonthSheet(sheetName) {
+      if (!sessionPlan || !sessionPlan.sessionsBySheet) return;
+      const sessions = sessionPlan.sessionsBySheet.get(sheetName);
+      if (!sessions || !sessions.length) return;
+      renderSessions(annotateNearestSessions(sessions, sheetName));
       scrollSessionsToStart();
     }
 
@@ -1033,7 +1071,10 @@
           return;
         }
         if (!selectUpcomingEl.disabled) selectUpcomingEl.value = "";
-        renderSingleFromRef(pv);
+        if (pv.startsWith(PAST_MONTH_PREFIX)) {
+          renderPastMonthSheet(pv.slice(PAST_MONTH_PREFIX.length));
+          return;
+        }
       });
 
       selectUpcomingEl.addEventListener("change", () => {
