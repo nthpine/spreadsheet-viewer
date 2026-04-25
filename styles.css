@@ -121,6 +121,10 @@ select:focus {
   outline: none;
 }
 
+#schedule-select {
+  min-width: min(360px, 92vw);
+}
+
 .status {
   margin-bottom: 1.25rem;
   padding: 0.75rem 1rem;

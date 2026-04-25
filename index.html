@@ -14,16 +14,12 @@
     <header>
       <div class="brand">
         <h1>NORTH PINE 参加者リスト</h1>
-        <p>今後の予定は日付順に並びます。過去の回は「過去の日程」から月別に選べます。</p>
+        <p>プルダウンで「今後の予定」または過去の月を選びます。今後は複数月が日付順にまとまって表示されます。</p>
       </div>
       <div class="controls controls-row">
         <div class="controls__group">
-          <label for="sheet-select-upcoming">今後の予定</label>
-          <select id="sheet-select-upcoming" aria-label="本日以降の開催日を選択"></select>
-        </div>
-        <div class="controls__group">
-          <label for="sheet-select-past">過去の日程</label>
-          <select id="sheet-select-past" aria-label="過去の開催日を月別に選択"></select>
+          <label for="schedule-select">日程</label>
+          <select id="schedule-select" aria-label="今後の予定または過去の月を選択"></select>
         </div>
       </div>
     </header>
@@ -126,7 +122,7 @@
     }
 
     async function discoverMonthSheets() {
-      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v5`;
+      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v6`;
       try {
         const raw = sessionStorage.getItem(cacheKey);
         if (raw) {
@@ -709,8 +705,7 @@
     const statusEl = document.getElementById("status");
     const sessionsEl = document.getElementById("sessions");
     const sessionsScrollEl = document.querySelector(".sessions-scroll");
-    const selectPastEl = document.getElementById("sheet-select-past");
-    const selectUpcomingEl = document.getElementById("sheet-select-upcoming");
+    const scheduleSelectEl = document.getElementById("schedule-select");
 
     /** 全月シート読み込み後の { sheetName, session, dt } プラン */
     let sessionPlan = null;
@@ -907,8 +902,29 @@
     const PAST_MONTH_PREFIX = "pastMonth:";
 
     /**
+     * gviz の誤シート返却などで、日付列の暦月がシート名 YYYYMM と著しくずれているときは除外する。
+     * パースできた列の過半数がシートの年月と一致するときだけ採用。
+     */
+    function sessionsPlausibleForSheet(sessions, ymSix) {
+      if (!sessions || !sessions.length) return false;
+      if (!/^\d{6}$/.test(ymSix)) return false;
+      const sy = +ymSix.slice(0, 4);
+      const sm = +ymSix.slice(4, 6);
+      let parsed = 0;
+      let match = 0;
+      for (const s of sessions) {
+        const dt = parseSessionDateFromCell(s.date, ymSix);
+        if (!dt) continue;
+        parsed++;
+        if (dt.getFullYear() === sy && dt.getMonth() + 1 === sm) match++;
+      }
+      if (parsed === 0) return false;
+      return match * 2 >= parsed;
+    }
+
+    /**
      * 発見済みの全 YYYYMM シートを読み、日付で過去／今後に分ける。
-     * sessionsBySheet … 月シートごとの全列（過去は月単位表示で使う）
+     * sessionsBySheet … 妥当性チェック済みの月シートごとの全列（過去は列フィルタ後に表示）
      */
     async function buildSessionPlan(sheetIds) {
       const lookupSessions = await fetchLookupSessionsOnce();
@@ -926,6 +942,7 @@
         );
         for (const { sheetName, sessions } of parts) {
           const list = [...(sessions || [])].sort((a, b) => a.col - b.col);
+          if (!sessionsPlausibleForSheet(list, sheetName)) continue;
           sessionsBySheet.set(sheetName, list);
           for (const s of list) {
             const dt = parseSessionDateFromCell(s.date, sheetName);
@@ -957,26 +974,23 @@
       };
     }
 
-    function rebuildSessionSelects(plan) {
-      selectUpcomingEl.innerHTML = "";
-      const upPlaceholder = document.createElement("option");
-      upPlaceholder.value = "";
-      upPlaceholder.textContent = "—";
-      selectUpcomingEl.appendChild(upPlaceholder);
+    function rebuildScheduleSelect(plan) {
+      scheduleSelectEl.innerHTML = "";
+
+      const ogUp = document.createElement("optgroup");
+      ogUp.label = "今後の予定";
 
       if (!plan.upcomingEntries.length) {
         const o = document.createElement("option");
         o.value = "";
         o.textContent = "（今後の予定なし）";
         o.disabled = true;
-        selectUpcomingEl.appendChild(o);
-        selectUpcomingEl.disabled = true;
+        ogUp.appendChild(o);
       } else {
-        selectUpcomingEl.disabled = false;
         const allOpt = document.createElement("option");
         allOpt.value = "__ALL__";
         allOpt.textContent = "すべて表示（日付順）";
-        selectUpcomingEl.appendChild(allOpt);
+        ogUp.appendChild(allOpt);
         const upDeduped = dedupeUpcomingEntriesByCalendarDay(
           plan.upcomingEntries,
         );
@@ -984,25 +998,21 @@
           const opt = document.createElement("option");
           opt.value = `${e.sheetName}:${e.session.col}`;
           opt.textContent = e.session.date;
-          selectUpcomingEl.appendChild(opt);
+          ogUp.appendChild(opt);
         }
       }
+      scheduleSelectEl.appendChild(ogUp);
 
-      selectPastEl.innerHTML = "";
-      const pastPlaceholder = document.createElement("option");
-      pastPlaceholder.value = "";
-      pastPlaceholder.textContent = "—";
-      selectPastEl.appendChild(pastPlaceholder);
+      const ogPast = document.createElement("optgroup");
+      ogPast.label = "過去の日程";
 
       if (!plan.pastEntries.length) {
         const o = document.createElement("option");
         o.value = "";
         o.textContent = "（過去の日程なし）";
         o.disabled = true;
-        selectPastEl.appendChild(o);
-        selectPastEl.disabled = true;
+        ogPast.appendChild(o);
       } else {
-        selectPastEl.disabled = false;
         const pastSheets = [
           ...new Set(plan.pastEntries.map((e) => e.sheetName)),
         ].sort((a, b) => b.localeCompare(a));
@@ -1010,16 +1020,20 @@
           const opt = document.createElement("option");
           opt.value = `${PAST_MONTH_PREFIX}${sh}`;
           opt.textContent = formatSheetLabel(sh);
-          selectPastEl.appendChild(opt);
+          ogPast.appendChild(opt);
         }
       }
+      scheduleSelectEl.appendChild(ogPast);
+
+      scheduleSelectEl.disabled =
+        !plan.upcomingEntries.length && !plan.pastEntries.length;
     }
 
     function renderUpcomingAll() {
       if (!sessionPlan || !sessionPlan.upcomingEntries.length) {
         renderSessions(
           [],
-          "今後の予定がありません。過去の日程は右のプルダウンから選べます。",
+          "今後の予定がありません。過去の月はプルダウンの「過去の日程」から選べます。",
         );
         return;
       }
@@ -1030,12 +1044,26 @@
       scrollSessionsToStart();
     }
 
-    /** 過去: その月シートの列をすべて表示（シート上の列順） */
+    /** 過去: その月シートのうち「今日より前」の列だけを列順で表示 */
     function renderPastMonthSheet(sheetName) {
       if (!sessionPlan || !sessionPlan.sessionsBySheet) return;
       const sessions = sessionPlan.sessionsBySheet.get(sheetName);
       if (!sessions || !sessions.length) return;
-      renderSessions(annotateNearestSessions(sessions, sheetName));
+      const today = startOfLocalDay(new Date());
+      const pastOnly = sessions.filter((s) => {
+        const dt = parseSessionDateFromCell(s.date, sheetName);
+        if (!dt) return false;
+        return startOfLocalDay(dt) < today;
+      });
+      if (!pastOnly.length) {
+        renderSessions(
+          [],
+          "この月に表示できる過去の日程がありません。",
+        );
+        scrollSessionsToStart();
+        return;
+      }
+      renderSessions(annotateNearestSessions(pastOnly, sheetName));
       scrollSessionsToStart();
     }
 
@@ -1050,42 +1078,35 @@
       scrollSessionsToStart();
     }
 
-    let sheetSelectsWired = false;
+    let scheduleSelectWired = false;
 
-    function wireSheetSelectsOnce() {
-      if (sheetSelectsWired) return;
-      sheetSelectsWired = true;
+    function wireScheduleSelectOnce() {
+      if (scheduleSelectWired) return;
+      scheduleSelectWired = true;
 
-      selectPastEl.addEventListener("change", () => {
-        const pv = selectPastEl.value;
-        if (!pv) {
+      scheduleSelectEl.addEventListener("change", () => {
+        const v = scheduleSelectEl.value;
+        if (!v || v === "") {
           if (sessionPlan && sessionPlan.upcomingEntries.length) {
-            selectUpcomingEl.value = "__ALL__";
+            scheduleSelectEl.value = "__ALL__";
             renderUpcomingAll();
           } else {
             renderSessions(
               [],
-              "今後の予定がありません。過去の日程は右のプルダウンから選べます。",
+              "今後の予定がありません。過去の月はプルダウンの「過去の日程」から選べます。",
             );
           }
           return;
         }
-        if (!selectUpcomingEl.disabled) selectUpcomingEl.value = "";
-        if (pv.startsWith(PAST_MONTH_PREFIX)) {
-          renderPastMonthSheet(pv.slice(PAST_MONTH_PREFIX.length));
-          return;
-        }
-      });
-
-      selectUpcomingEl.addEventListener("change", () => {
-        const uv = selectUpcomingEl.value;
-        if (!selectPastEl.disabled) selectPastEl.value = "";
-        if (!uv || uv === "") return;
-        if (uv === "__ALL__") {
+        if (v === "__ALL__") {
           renderUpcomingAll();
           return;
         }
-        renderSingleFromRef(uv);
+        if (v.startsWith(PAST_MONTH_PREFIX)) {
+          renderPastMonthSheet(v.slice(PAST_MONTH_PREFIX.length));
+          return;
+        }
+        renderSingleFromRef(v);
       });
     }
 
@@ -1109,17 +1130,23 @@
           );
           return;
         }
-        rebuildSessionSelects(sessionPlan);
-        wireSheetSelectsOnce();
-        selectPastEl.value = "";
+        rebuildScheduleSelect(sessionPlan);
+        wireScheduleSelectOnce();
         if (sessionPlan.upcomingEntries.length) {
-          selectUpcomingEl.value = "__ALL__";
+          scheduleSelectEl.value = "__ALL__";
           renderUpcomingAll();
+        } else if (sessionPlan.pastEntries.length) {
+          const pastSheets = [
+            ...new Set(sessionPlan.pastEntries.map((e) => e.sheetName)),
+          ].sort((a, b) => b.localeCompare(a));
+          const sh = pastSheets[0];
+          scheduleSelectEl.value = `${PAST_MONTH_PREFIX}${sh}`;
+          renderPastMonthSheet(sh);
         } else {
-          selectUpcomingEl.value = "";
+          scheduleSelectEl.value = "";
           renderSessions(
             [],
-            "今後の予定がありません。過去の日程は右のプルダウンから選べます。",
+            "表示できる日程がありません。",
           );
         }
         setStatus("hidden", "");
