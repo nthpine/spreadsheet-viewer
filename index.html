@@ -27,12 +27,18 @@
       <div id="sessions" class="sessions"></div>
     </div>
 
-    <footer>データは Google スプレッドシートの公開 CSV から取得しています。</footer>
+    <footer>データは Google スプレッドシートの公開 CSV、または GAS ウェブアプリ経由で取得しています。</footer>
   </div>
 
   <script>
     /** スプレッドシート ID（月シートは YYYYMM 名で存在するものだけプルダウンに出る） */
     const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
+
+    /**
+     * GAS ウェブアプリの URL（末尾の /exec まで）。
+     * gas/Code.gs をデプロイしたあとに貼る。空のままなら従来どおり CSV のみ（背景色は使わない）。
+     */
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbgdkzodm824U8bppBN4o-Ib5EcyTEOfye41vb_6ev3h-pFlvjCyJvcR-JhOZosiqz/exec";
 
     /**
      * 月次シートのほかに参照するシート名（過去回の名前など）。
@@ -162,6 +168,172 @@
       return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?${q}`;
     }
 
+    function gasWebAppBase() {
+      const u = String(GAS_WEB_APP_URL || "").trim();
+      if (!u) return "";
+      return u.replace(/\/$/, "");
+    }
+
+    /**
+     * GAS から { sessions } を取得（セル背景で初参加フラグ付き）。
+     * URL 未設定・失敗時は null。
+     */
+    async function fetchSessionsViaGas(sheetName) {
+      const base = gasWebAppBase();
+      if (!base) return null;
+      const url = `${base}?sheet=${encodeURIComponent(sheetName)}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const j = await res.json();
+        if (!j || j.ok !== true || !Array.isArray(j.sessions)) return null;
+        return normalizeGasSessions(j.sessions);
+      } catch (err) {
+        console.warn("GAS fetch failed", err);
+        return null;
+      }
+    }
+
+    /** POST でも同じ API を叩ける（CORS で失敗する環境向けに GET を優先） */
+    async function fetchSessionsViaGasPost(sheetName) {
+      const base = gasWebAppBase();
+      if (!base) return null;
+      try {
+        const res = await fetch(base, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sheet: sheetName }),
+        });
+        if (!res.ok) return null;
+        const j = await res.json();
+        if (!j || j.ok !== true || !Array.isArray(j.sessions)) return null;
+        return normalizeGasSessions(j.sessions);
+      } catch (err) {
+        console.warn("GAS POST failed", err);
+        return null;
+      }
+    }
+
+    function normalizeGasSessions(raw) {
+      return raw.map((s) => ({
+        col: typeof s.col === "number" ? s.col : 0,
+        date: String(s.date || "").trim(),
+        place: s.place != null && String(s.place).trim() ? String(s.place).trim() : "—",
+        slots: normalizeGasSlots(s.slots),
+      }));
+    }
+
+    function normalizeGasSlots(slots) {
+      const out = [];
+      for (let i = 0; i < MAX_PARTICIPANTS; i++) {
+        const sl = slots && slots[i] ? slots[i] : {};
+        out.push({
+          display: String(sl.display || "").trim(),
+          isFirst: Boolean(sl.isFirst),
+          isFemale: Boolean(sl.isFemale),
+        });
+      }
+      return out;
+    }
+
+    function startOfLocalDay(d) {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    }
+
+    function sameLocalCalendarDay(a, b) {
+      return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+      );
+    }
+
+    /**
+     * 日付セル（例: 4/15(水)）を Date にする。年は月シート名 YYYYMM を優先。
+     */
+    function parseSessionDateFromCell(dateStr, ymSix) {
+      const t = String(dateStr || "")
+        .normalize("NFKC")
+        .trim();
+      if (!t) return null;
+      const ymd = t.match(
+        /(\d{4})[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})/,
+      );
+      if (ymd) {
+        const dt = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
+        return Number.isNaN(dt.getTime()) ? null : dt;
+      }
+      const md = t.match(/^(\d{1,2})\/(\d{1,2})/);
+      if (md && ymSix && /^\d{6}$/.test(ymSix)) {
+        const yy = +ymSix.slice(0, 4);
+        const mo = +md[1] - 1;
+        const da = +md[2];
+        const dt = new Date(yy, mo, da);
+        return Number.isNaN(dt.getTime()) ? null : dt;
+      }
+      return null;
+    }
+
+    /**
+     * 本日に最も近い開催日の列を強調（本日を含む未来があれば最小日＝次回／本日）。
+     * 未来がなければ、本日より前で最も新しい日＝直近の開催。
+     */
+    function annotateNearestSessions(sessions, ymSix) {
+      if (!sessions || !sessions.length) return sessions;
+      if (!ymSix || !/^\d{6}$/.test(ymSix)) return sessions;
+
+      const today = startOfLocalDay(new Date());
+      const withDt = sessions
+        .map((s) => ({
+          s,
+          dt: parseSessionDateFromCell(s.date, ymSix),
+        }))
+        .filter((x) => x.dt);
+
+      if (!withDt.length) return sessions;
+
+      let targetDay = null;
+      let mode = "";
+
+      const futureOrToday = withDt
+        .filter((x) => startOfLocalDay(x.dt) >= today)
+        .sort((a, b) => a.dt - b.dt);
+      if (futureOrToday.length) {
+        targetDay = startOfLocalDay(futureOrToday[0].dt);
+        mode = sameLocalCalendarDay(targetDay, today) ? "today" : "next";
+      } else {
+        const past = withDt
+          .filter((x) => startOfLocalDay(x.dt) < today)
+          .sort((a, b) => b.dt - a.dt);
+        if (past.length) {
+          targetDay = startOfLocalDay(past[0].dt);
+          mode = "past";
+        }
+      }
+
+      if (!targetDay) return sessions;
+
+      const label =
+        mode === "today"
+          ? "本日開催"
+          : mode === "next"
+            ? "次回開催"
+            : "直近の開催";
+
+      return sessions.map((s) => {
+        const dt = parseSessionDateFromCell(s.date, ymSix);
+        const hit =
+          Boolean(dt) && sameLocalCalendarDay(startOfLocalDay(dt), targetDay);
+        return {
+          ...s,
+          highlightNext: hit,
+          highlightLabel: hit ? label : "",
+        };
+      });
+    }
+
     /** 簡易 CSV パーサ（ダブルクォート・エスケープ対応） */
     function parseCSV(text) {
       const rows = [];
@@ -248,7 +420,7 @@
      */
     function parseParticipantCell(raw) {
       if (!raw) {
-        return { display: "", isFirst: false };
+        return { display: "", isFirst: false, isFemale: false };
       }
       let t = raw;
       let isFirst = false;
@@ -272,7 +444,7 @@
         t = t.replace(/\bNEW\b/gi, "");
       }
       t = t.replace(/\s{2,}/g, " ").trim();
-      return { display: t || raw.trim(), isFirst };
+      return { display: t || raw.trim(), isFirst, isFemale: false };
     }
 
     /**
@@ -311,7 +483,11 @@
         col: s.col,
         date: s.date,
         place: s.place,
-        slots: s.slots.map((sl) => ({ display: sl.display, isFirst: sl.isFirst })),
+        slots: s.slots.map((sl) => ({
+          display: sl.display,
+          isFirst: sl.isFirst,
+          isFemale: Boolean(sl.isFemale),
+        })),
       };
     }
 
@@ -342,9 +518,21 @@
           place: prev.place && prev.place !== "—" ? prev.place : s.place,
           slots: prev.slots.map((pa, i) => {
             const pb = s.slots[i];
-            if (pa && pa.display) return { ...pa };
-            if (pb && pb.display) return { ...pb };
-            return { display: "", isFirst: false };
+            if (pa && pa.display) {
+              return {
+                display: pa.display,
+                isFirst: Boolean(pa.isFirst),
+                isFemale: Boolean(pa.isFemale),
+              };
+            }
+            if (pb && pb.display) {
+              return {
+                display: pb.display,
+                isFirst: Boolean(pb.isFirst),
+                isFemale: Boolean(pb.isFemale),
+              };
+            }
+            return { display: "", isFirst: false, isFemale: false };
           }),
         };
         byDate.set(dk, mergedLu);
@@ -375,6 +563,7 @@
           merged.slots = luStrict.slots.map((sl) => ({
             display: sl.display,
             isFirst: sl.isFirst,
+            isFemale: Boolean(sl.isFemale),
           }));
           return merged;
         }
@@ -386,7 +575,11 @@
           if (slot.display) return slot;
           const f = luForSlots.slots[i];
           if (f && f.display) {
-            return { display: f.display, isFirst: f.isFirst };
+            return {
+              display: f.display,
+              isFirst: f.isFirst,
+              isFemale: Boolean(f.isFemale),
+            };
           }
           return slot;
         });
@@ -453,11 +646,27 @@
       for (const s of sessions) {
         const card = document.createElement("article");
         card.className = "session";
+        if (s.highlightNext) {
+          card.classList.add("session--highlight-next");
+        }
+
+        const head = document.createElement("div");
+        head.className = "session__head";
 
         const h2 = document.createElement("h2");
         h2.className = "session__date";
         h2.textContent = s.date;
-        card.appendChild(h2);
+        head.appendChild(h2);
+
+        if (s.highlightNext && s.highlightLabel) {
+          const nextBadge = document.createElement("span");
+          nextBadge.className = "session__badge-next";
+          nextBadge.textContent = s.highlightLabel;
+          nextBadge.title = s.highlightLabel;
+          head.appendChild(nextBadge);
+        }
+
+        card.appendChild(head);
 
         const place = document.createElement("div");
         place.className = "session__place";
@@ -485,6 +694,7 @@
             li.className = "session__row";
             if (empty) li.classList.add("session__row--slot-empty");
             if (slot.isFirst && !empty) li.classList.add("session__row--first");
+            if (slot.isFemale && !empty) li.classList.add("session__row--female");
 
             const numEl = document.createElement("span");
             numEl.className = "session__num";
@@ -506,6 +716,14 @@
               li.appendChild(badge);
             }
 
+            if (slot.isFemale && !empty) {
+              const fb = document.createElement("span");
+              fb.className = "session__badge-female";
+              fb.textContent = "女";
+              fb.title = "女性";
+              li.appendChild(fb);
+            }
+
             ul.appendChild(li);
           });
         }
@@ -519,22 +737,48 @@
       sessionsEl.innerHTML = "";
 
       try {
-        const mainTextPromise = fetchSheetText(sheetName);
-        const lookupTextPromise = fetchSheetText(LOOKUP_SHEET_NAME);
-        const [mainText, lookupText] = await Promise.all([
-          mainTextPromise,
-          lookupTextPromise,
-        ]);
-        if (!mainText) {
-          throw new Error("main sheet empty or invalid");
+        const useGas = Boolean(gasWebAppBase());
+        let sessions = null;
+        let lookupSessions = null;
+
+        if (useGas) {
+          const [mainG, lookupG] = await Promise.all([
+            fetchSessionsViaGas(sheetName),
+            fetchSessionsViaGas(LOOKUP_SHEET_NAME),
+          ]);
+          sessions = mainG;
+          lookupSessions = lookupG;
+          if (!sessions) {
+            sessions = await fetchSessionsViaGasPost(sheetName);
+          }
+          if (!lookupSessions) {
+            lookupSessions = await fetchSessionsViaGasPost(LOOKUP_SHEET_NAME);
+          }
         }
-        const mainRows = parseCSV(mainText);
-        let sessions = buildSessions(mainRows);
-        if (lookupText) {
-          const lookupRows = parseCSV(lookupText);
-          const lookupSessions = buildSessions(lookupRows);
+
+        if (!sessions) {
+          const mainText = await fetchSheetText(sheetName);
+          if (!mainText) {
+            throw new Error("main sheet empty or invalid");
+          }
+          const mainRows = parseCSV(mainText);
+          sessions = buildSessions(mainRows);
+        }
+
+        if (!lookupSessions) {
+          const lookupText = await fetchSheetText(LOOKUP_SHEET_NAME);
+          if (lookupText) {
+            const lookupRows = parseCSV(lookupText);
+            lookupSessions = buildSessions(lookupRows);
+          }
+        }
+
+        if (lookupSessions && lookupSessions.length) {
           sessions = mergeSessionsFromLookup(sessions, lookupSessions);
         }
+
+        sessions = annotateNearestSessions(sessions, sheetName);
+
         setStatus("hidden", "");
         renderSessions(sessions);
       } catch (e) {

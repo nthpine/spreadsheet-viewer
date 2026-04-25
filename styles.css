@@ -10,6 +10,11 @@
   --first-bg: rgba(232, 197, 71, 0.12);
   --first-border: rgba(232, 197, 71, 0.85);
   --first-badge: #e8c547;
+  --female-accent: #f472b6;
+  --female-bg: rgba(244, 114, 182, 0.1);
+  --female-border: rgba(244, 114, 182, 0.55);
+  --next-ring: rgba(56, 189, 248, 0.55);
+  --next-bg: rgba(56, 189, 248, 0.08);
   --radius: 14px;
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
@@ -195,11 +200,49 @@ select:focus {
   opacity: 0.9;
 }
 
+.session--highlight-next {
+  border-color: var(--next-ring);
+  background: linear-gradient(
+      165deg,
+      var(--next-bg),
+      var(--bg-card) 42%
+    ),
+    var(--bg-card);
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.2),
+    var(--shadow);
+}
+
+.session--highlight-next::before {
+  background: linear-gradient(90deg, #38bdf8, #22d3ee, #a5f3fc);
+  opacity: 1;
+}
+
+.session__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.65rem;
+  margin-bottom: 0.25rem;
+}
+
 .session__date {
   font-size: 1.05rem;
   font-weight: 700;
-  margin: 0 0 0.25rem;
+  margin: 0;
   color: var(--text);
+}
+
+.session__badge-next {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  color: #e0f2fe;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  line-height: 1.2;
 }
 
 .session__place {
@@ -286,6 +329,32 @@ select:focus {
 
 .session__row--first .session__num {
   color: #d4b96a;
+}
+
+.session__row--female {
+  background: var(--female-bg);
+  border-color: rgba(244, 114, 182, 0.22);
+  box-shadow: inset 3px 0 0 0 var(--female-border);
+}
+
+.session__row--female .session__num {
+  color: #f9a8d4;
+}
+
+.session__row--female .session__name {
+  color: #fce7f3;
+}
+
+.session__badge-female {
+  flex: 0 0 auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  color: #3b0a24;
+  background: linear-gradient(145deg, var(--female-accent), #fbcfe8);
+  line-height: 1.2;
 }
 
 .session__row--empty-row {
