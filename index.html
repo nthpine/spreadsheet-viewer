@@ -202,19 +202,42 @@
 
     /**
      * record シート等で、B 列が「年付き」ならそのまま解釈。
-     * 月日のみのときは ym 候補のうち「今日以降で最も早い」解釈を採用（過去日は除外しやすくする）。
+     * 月日のみのときは ym 候補のうち「今日以降で最も早い」解釈を採用。
+     * いずれの形式でも「今日未満」は null（一覧に出さない）。
      */
     function parseSessionDateFromCellBest(dateStr) {
       const raw = String(dateStr || "").normalize("NFKC").trim();
       if (!raw) return null;
+      const today = startOfLocalDay(new Date());
+
       const ymd = raw.match(
         /(\d{4})[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})/,
       );
       if (ymd) {
         const dt = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
-        return Number.isNaN(dt.getTime()) ? null : dt;
+        if (Number.isNaN(dt.getTime())) return null;
+        const sod = startOfLocalDay(dt);
+        if (sod < today) return null;
+        return dt;
       }
-      const today = startOfLocalDay(new Date());
+
+      const t = raw
+        .replace(/\([^)]*\)/g, "")
+        .replace(/（[^）]*）/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      /* 英語ロケールの M/D/YYYY（CSV に出ることがある） */
+      const mdy = t.match(
+        /^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{4})(?:\s|$)/,
+      );
+      if (mdy) {
+        const dt = new Date(+mdy[3], +mdy[1] - 1, +mdy[2]);
+        if (Number.isNaN(dt.getTime())) return null;
+        const sod = startOfLocalDay(dt);
+        if (sod < today) return null;
+        return dt;
+      }
+
       let best = null;
       let bestT = Infinity;
       for (const ym of ymHintsAroundNow()) {
@@ -778,7 +801,7 @@
     function bundleRecordCacheKey() {
       const d = new Date();
       const day = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-      return `bundle_record_${SPREADSHEET_ID}_v1_${day}`;
+      return `bundle_record_${SPREADSHEET_ID}_v2_${day}`;
     }
 
     function openBundleIdb_() {
@@ -1064,7 +1087,11 @@
         renderSessions([], "読み込み中のデータがありません。");
         return;
       }
-      const entries = collectFutureEntriesFromSheets(sessionPlan);
+      const todayCut = startOfLocalDay(new Date());
+      let entries = collectFutureEntriesFromSheets(sessionPlan);
+      entries = entries.filter(
+        (e) => e.dt && startOfLocalDay(e.dt) >= todayCut,
+      );
       if (!entries.length) {
         renderSessions([], "今後の予定がありません。");
         return;
