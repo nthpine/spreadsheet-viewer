@@ -33,7 +33,7 @@
       <div id="sessions" class="sessions"></div>
     </div>
 
-    <footer>データは Google スプレッドシートの公開 CSV（export / gviz）で取得しています。</footer>
+    <footer>データは Google スプレッドシートから取得しています。</footer>
   </div>
 
   <script>
@@ -229,6 +229,7 @@
               ? String(s.place).trim()
               : "—",
           slots: normalizeGasSlots(s.slots),
+          recordDateParse: Boolean(s.recordDateParse),
         };
       });
     }
@@ -241,6 +242,7 @@
           display: normalizeParticipantDisplay(sl.display),
           isFirst: Boolean(sl.isFirst),
           isFemale: Boolean(sl.isFemale),
+          isUnconfirmed: Boolean(sl.isUnconfirmed),
         });
       }
       return out;
@@ -289,6 +291,50 @@
         return Number.isNaN(dt.getTime()) ? null : dt;
       }
       return null;
+    }
+
+    /** record 用: 月シート名がないとき、日付のみ表記の年を当てるための YYYYMM 候補（過去〜未来） */
+    function ymHintsAroundNow() {
+      const keys = [];
+      const n = new Date();
+      for (let k = -36; k <= 72; k++) {
+        const d = new Date(n.getFullYear(), n.getMonth() + k, 1);
+        keys.push(
+          `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`,
+        );
+      }
+      return keys;
+    }
+
+    /**
+     * record シート等で、B 列が「年付き」ならそのまま解釈。
+     * 月日のみのときは ym 候補のうち「今日以降で最も早い」解釈を採用（過去日は除外しやすくする）。
+     */
+    function parseSessionDateFromCellBest(dateStr) {
+      const raw = String(dateStr || "").normalize("NFKC").trim();
+      if (!raw) return null;
+      const ymd = raw.match(
+        /(\d{4})[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})/,
+      );
+      if (ymd) {
+        const dt = new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
+        return Number.isNaN(dt.getTime()) ? null : dt;
+      }
+      const today = startOfLocalDay(new Date());
+      let best = null;
+      let bestT = Infinity;
+      for (const ym of ymHintsAroundNow()) {
+        const dt = parseSessionDateFromCell(dateStr, ym);
+        if (!dt) continue;
+        const sod = startOfLocalDay(dt);
+        if (sod < today) continue;
+        const ts = sod.getTime();
+        if (ts < bestT) {
+          bestT = ts;
+          best = dt;
+        }
+      }
+      return best;
     }
 
     /** 簡易 CSV パーサ（ダブルクォート・エスケープ対応） */
@@ -392,7 +438,12 @@
     function parseParticipantCell(raw) {
       const rawStr = normalizeParticipantDisplay(raw);
       if (!rawStr) {
-        return { display: "", isFirst: false, isFemale: false };
+        return {
+          display: "",
+          isFirst: false,
+          isFemale: false,
+          isUnconfirmed: false,
+        };
       }
       let t = rawStr;
       let isFirst = false;
@@ -417,7 +468,7 @@
       }
       t = t.replace(/\s{2,}/g, " ").trim();
       const display = normalizeParticipantDisplay(t) || rawStr;
-      return { display, isFirst, isFemale: false };
+      return { display, isFirst, isFemale: false, isUnconfirmed: false };
     }
 
     /**
@@ -456,10 +507,12 @@
         col: s.col,
         date: s.date,
         place: s.place,
+        recordDateParse: Boolean(s.recordDateParse),
         slots: s.slots.map((sl) => ({
           display: normalizeParticipantDisplay(sl.display),
           isFirst: sl.isFirst,
           isFemale: Boolean(sl.isFemale),
+          isUnconfirmed: Boolean(sl.isUnconfirmed),
         })),
       };
     }
@@ -496,6 +549,7 @@
                 display: normalizeParticipantDisplay(pa.display),
                 isFirst: Boolean(pa.isFirst),
                 isFemale: Boolean(pa.isFemale),
+                isUnconfirmed: Boolean(pa.isUnconfirmed),
               };
             }
             if (pb && slotHasName(pb)) {
@@ -503,9 +557,15 @@
                 display: normalizeParticipantDisplay(pb.display),
                 isFirst: Boolean(pb.isFirst),
                 isFemale: Boolean(pb.isFemale),
+                isUnconfirmed: Boolean(pb.isUnconfirmed),
               };
             }
-            return { display: "", isFirst: false, isFemale: false };
+            return {
+              display: "",
+              isFirst: false,
+              isFemale: false,
+              isUnconfirmed: false,
+            };
           }),
         };
         byDate.set(dk, mergedLu);
@@ -537,6 +597,7 @@
             display: normalizeParticipantDisplay(sl.display),
             isFirst: sl.isFirst,
             isFemale: Boolean(sl.isFemale),
+            isUnconfirmed: Boolean(sl.isUnconfirmed),
           }));
           return merged;
         }
@@ -552,6 +613,7 @@
               display: normalizeParticipantDisplay(f.display),
               isFirst: f.isFirst,
               isFemale: Boolean(f.isFemale),
+              isUnconfirmed: Boolean(f.isUnconfirmed),
             };
           }
           return slot;
@@ -560,6 +622,116 @@
       });
 
       return out;
+    }
+
+    /** Google スプレッドシートのチェックボックス列（CSV は TRUE / FALSE） */
+    function parseCheckboxCell(v) {
+      const t = String(v ?? "")
+        .normalize("NFKC")
+        .trim()
+        .toUpperCase();
+      return (
+        t === "TRUE" ||
+        t === "1" ||
+        t === "YES" ||
+        t === "はい" ||
+        t === "✓" ||
+        t === "☑"
+      );
+    }
+
+    /**
+     * シート「record」形式（1行目見出し推奨: A=連番, B=日付, …）。
+     * A:1〜15, B:日付, C:場所, D:名前, E:初参加, F:女性, G:未確認
+     */
+    function looksLikeRecordSheetRows(rows) {
+      if (!rows || rows.length < 2) return false;
+      const r0 = rows[0];
+      const a0 = String(r0[0] ?? "").normalize("NFKC").trim();
+      const b0 = String(r0[1] ?? "").normalize("NFKC").trim();
+      if (b0.includes("日付")) return true;
+      if (a0 === "連番" || a0.includes("連番")) return true;
+      return false;
+    }
+
+    function buildSessionsFromRecordRows(rows) {
+      const start = looksLikeRecordSheetRows(rows) ? 1 : 0;
+      const groups = new Map();
+
+      for (let r = start; r < rows.length; r++) {
+        const row = rows[r] || [];
+        const dateRaw = String(row[1] ?? "").trim();
+        if (!dateRaw) continue;
+        const placeRaw = String(row[2] ?? "").trim() || "—";
+        const key = `${normalizeKeyPart(dateRaw)}\t${normalizeKeyPart(placeRaw)}`;
+        if (!groups.has(key)) {
+          groups.set(key, {
+            date: dateRaw,
+            place: placeRaw || "—",
+            bySeq: new Map(),
+            minRow: r,
+          });
+        }
+        const g = groups.get(key);
+        g.minRow = Math.min(g.minRow, r);
+        const seq = parseInt(String(row[0] ?? "").trim(), 10);
+        const slotIndex =
+          Number.isFinite(seq) && seq >= 1 && seq <= MAX_PARTICIPANTS
+            ? seq - 1
+            : null;
+        if (slotIndex === null) continue;
+
+        const parsed = parseParticipantCell(row[3]);
+        const fromCb = {
+          isFirst: parseCheckboxCell(row[4]),
+          isFemale: parseCheckboxCell(row[5]),
+          isUnconfirmed: parseCheckboxCell(row[6]),
+        };
+        g.bySeq.set(slotIndex, {
+          display: parsed.display,
+          isFirst: Boolean(parsed.isFirst || fromCb.isFirst),
+          isFemale: Boolean(parsed.isFemale || fromCb.isFemale),
+          isUnconfirmed: fromCb.isUnconfirmed,
+        });
+      }
+
+      const emptySlot = () => ({
+        display: "",
+        isFirst: false,
+        isFemale: false,
+        isUnconfirmed: false,
+      });
+      const sessions = [];
+      for (const g of groups.values()) {
+        const slots = [];
+        for (let i = 0; i < MAX_PARTICIPANTS; i++) {
+          slots.push(g.bySeq.has(i) ? g.bySeq.get(i) : emptySlot());
+        }
+        sessions.push({
+          col: g.minRow,
+          date: g.date,
+          place: g.place,
+          slots,
+          recordDateParse: true,
+        });
+      }
+
+      sessions.sort((a, b) => {
+        const da = parseSessionDateFromCellBest(a.date);
+        const db = parseSessionDateFromCellBest(b.date);
+        const ta = da ? startOfLocalDay(da).getTime() : 0;
+        const tb = db ? startOfLocalDay(db).getTime() : 0;
+        if (ta !== tb) return ta - tb;
+        const pa = normalizeKeyPart(a.place).localeCompare(
+          normalizeKeyPart(b.place),
+        );
+        if (pa !== 0) return pa;
+        return a.col - b.col;
+      });
+      sessions.forEach((s, i) => {
+        s.col = i;
+      });
+      return sessions;
     }
 
     /**
@@ -666,6 +838,9 @@
             if (empty) li.classList.add("session__row--slot-empty");
             if (slot.isFirst && !empty) li.classList.add("session__row--first");
             if (slot.isFemale && !empty) li.classList.add("session__row--female");
+            if (slot.isUnconfirmed && !empty) {
+              li.classList.add("session__row--unconfirmed");
+            }
 
             const numEl = document.createElement("span");
             numEl.className = "session__num";
@@ -693,6 +868,14 @@
               fb.textContent = "女";
               fb.title = "女性";
               li.appendChild(fb);
+            }
+
+            if (slot.isUnconfirmed && !empty) {
+              const ub = document.createElement("span");
+              ub.className = "session__badge-unconfirmed";
+              ub.textContent = "未";
+              ub.title = "未確認";
+              li.appendChild(ub);
             }
 
             ul.appendChild(li);
@@ -730,7 +913,7 @@
       const d = new Date();
       const day = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
       const g2 = String(CSV_TAB2_GID || "").trim();
-      return `bundle_tabs_${SPREADSHEET_ID}_${day}_${includeSecond ? "2" : "1"}_${CSV_TAB1_GID}_${g2}`;
+      return `bundle_tabs_${SPREADSHEET_ID}_v8_${day}_${includeSecond ? "2" : "1"}_${CSV_TAB1_GID}_${g2}`;
     }
 
     function openBundleIdb_() {
@@ -822,17 +1005,35 @@
         lookupSessions = buildSessions(parseCSV(lookupText));
       }
 
+      function sessionsFromTabCsv(text) {
+        const rows = parseCSV(text);
+        if (looksLikeRecordSheetRows(rows)) {
+          return {
+            sessions: buildSessionsFromRecordRows(rows),
+            recordLayout: true,
+          };
+        }
+        return {
+          sessions: buildSessions(rows),
+          recordLayout: false,
+        };
+      }
+
       const sheets = [];
       if (t1 && csvLooksValid(t1)) {
+        const s1 = sessionsFromTabCsv(t1);
         sheets.push({
           tabIndex: 0,
-          sessions: buildSessions(parseCSV(t1)),
+          sessions: s1.sessions,
+          recordLayout: s1.recordLayout,
         });
       }
       if (wantSecond && t2 && csvLooksValid(t2)) {
+        const s2 = sessionsFromTabCsv(t2);
         sheets.push({
           tabIndex: 1,
-          sessions: buildSessions(parseCSV(t2)),
+          sessions: s2.sessions,
+          recordLayout: s2.recordLayout,
         });
       }
       if (!sheets.length) return null;
@@ -868,6 +1069,7 @@
       for (const item of items) {
         const tabIndex = Number(item.tabIndex) || 0;
         const ymHint = tabIndex === 0 ? ym0 : ym1;
+        const recordLayout = Boolean(item.recordLayout);
         let list = normalizeGasSessions(item.sessions || []);
         if (lookupSessions && lookupSessions.length) {
           list = mergeSessionsFromLookup(list, lookupSessions);
@@ -875,11 +1077,13 @@
         list = [...list].sort((a, b) => Number(a.col) - Number(b.col));
         list = filterSessionsFromTodayOnward(list, ymHint);
         if (!list.length) continue;
-        if (!sessionsPlausibleForSheet(list, ymHint)) continue;
+        if (!recordLayout && !sessionsPlausibleForSheet(list, ymHint)) continue;
         sessionsBySheet.set(ymHint, list);
         const seenColInSheet = new Set();
         for (const s of list) {
-          const dt = parseSessionDateFromCell(s.date, ymHint);
+          const dt = s.recordDateParse
+            ? parseSessionDateFromCellBest(s.date)
+            : parseSessionDateFromCell(s.date, ymHint);
           if (!dt) continue;
           const colKey = `${ymHint}:${s.col}`;
           if (seenColInSheet.has(colKey)) continue;
@@ -944,16 +1148,22 @@
       for (const sheetName of sheetOrder) {
         const sessions = plan.sessionsBySheet.get(sheetName);
         for (const s of sessions) {
-          const dt = parseSessionDateFromCell(s.date, sheetName);
+          const dt = s.recordDateParse
+            ? parseSessionDateFromCellBest(s.date)
+            : parseSessionDateFromCell(s.date, sheetName);
           if (!dt) continue;
           if (startOfLocalDay(dt) < today) continue;
           rows.push({ sheetName, session: s, dt });
         }
       }
       rows.sort((a, b) => {
-        const ma = sessionMatchesSheetMonth(a.dt, a.sheetName) ? 0 : 1;
-        const mb = sessionMatchesSheetMonth(b.dt, b.sheetName) ? 0 : 1;
-        if (ma !== mb) return ma - mb;
+        const ra = Boolean(a.session.recordDateParse);
+        const rb = Boolean(b.session.recordDateParse);
+        if (!ra && !rb) {
+          const ma = sessionMatchesSheetMonth(a.dt, a.sheetName) ? 0 : 1;
+          const mb = sessionMatchesSheetMonth(b.dt, b.sheetName) ? 0 : 1;
+          if (ma !== mb) return ma - mb;
+        }
         const ta = startOfLocalDay(a.dt).getTime();
         const tb = startOfLocalDay(b.dt).getTime();
         if (ta !== tb) return ta - tb;
@@ -1007,7 +1217,9 @@
     function filterSessionsFromTodayOnward(sessions, sheetName) {
       const today = startOfLocalDay(new Date());
       return sessions.filter((s) => {
-        const dt = parseSessionDateFromCell(s.date, sheetName);
+        const dt = s.recordDateParse
+          ? parseSessionDateFromCellBest(s.date)
+          : parseSessionDateFromCell(s.date, sheetName);
         return dt && startOfLocalDay(dt) >= today;
       });
     }
@@ -1078,7 +1290,7 @@
       btnRefreshBundleEl.addEventListener("click", async () => {
         btnRefreshBundleEl.disabled = true;
         try {
-          setStatus("loading", "スプレッドシートから再取得中…");
+          setStatus("loading", "データ取得中…");
           await clearBundleCache();
           await initializeFromSpreadsheet();
         } catch (err) {
@@ -1098,8 +1310,8 @@
       setStatus(
         "loading",
         includeSecond && String(CSV_TAB2_GID || "").trim() !== ""
-          ? "スプレッドシートの1番目・2番目のシートを読み込み中…"
-          : "スプレッドシートの1番目のシートを読み込み中…",
+          ? "読み込み中…"
+          : "読み込み中…",
       );
       const tabPlan = await tryBuildSessionPlanFromTabs(includeSecond);
       if (tabPlan && tabPlan.sessionsBySheet.size) {
@@ -1123,7 +1335,7 @@
         .filter((ym) => /^\d{6}$/.test(ym) && ym >= cur)
         .sort((a, b) => a.localeCompare(b));
 
-      setStatus("loading", "今月以降のシートを読み込み中…");
+      setStatus("loading", "読み込み中…");
       sessionPlan = await buildSessionPlan(toFetch);
 
       if (
@@ -1142,7 +1354,7 @@
     }
 
     async function bootstrap() {
-      setStatus("loading", "スプレッドシートから読み込み中…");
+      setStatus("loading", "読み込み中…");
       try {
         await initializeFromSpreadsheet();
       } catch (e) {
