@@ -41,53 +41,19 @@
     const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
 
     /**
-     * 月次シートのほかに参照するシート名（過去回の名前など）。
-     * 存在しない場合は無視されます。
+     * 参加者名などを補完する列形式シート。存在しない場合は無視されます。
      */
     const LOOKUP_SHEET_NAME = "参加者";
 
-    /**
-     * 左から1枚目のシート gid（シートを開いたときの URL の gid=。先頭タブは多くの場合 0）
-     */
-    const CSV_TAB1_GID = 0;
-    /**
-     * 本日が 23 日以降に読む 2 枚目の gid。空のままなら 2 枚目は取得しない（URL の gid= の数値を貼る）
-     */
-    const CSV_TAB2_GID = "";
-
-    /**
-     * ローカル日付の「今月」から、最大何ヶ月先まで YYYYMM シートの存在確認をするか。
-     * 過去月はプローブしない。
-     */
-    const SHEET_PROBE_FUTURE_MONTHS = 24;
-
-    /** 日程プラン構築時に同時取得する月シート数（多すぎるとブラウザ・スプレッドシート側に負荷） */
-    const SHEET_FETCH_CONCURRENCY = 5;
-
-    /** シート一覧のキャッシュ（ミリ秒） */
-    const SHEET_LIST_CACHE_MS = 60 * 60 * 1000;
+    /** 日程・参加者の正（行形式）。YYYYMM の月シートは参照しません。 */
+    const RECORD_SHEET_NAME = "record";
 
     /** タブ CSV まとめ取得の IndexedDB キャッシュ TTL */
     const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
     const BUNDLE_IDB_NAME = "north-pine-viewer";
     const BUNDLE_IDB_STORE = "gasBundle";
 
-    function sheetNamesRange(fromYear, fromMonth, toYear, toMonth) {
-      const out = [];
-      let y = fromYear;
-      let m = fromMonth;
-      while (y < toYear || (y === toYear && m <= toMonth)) {
-        out.push(`${y}${String(m).padStart(2, "0")}`);
-        m += 1;
-        if (m > 12) {
-          m = 1;
-          y += 1;
-        }
-      }
-      return out;
-    }
-
-    /** ローカル日付の「今月」を YYYYMM（シート名と比較用） */
+    /** ローカル日付の「今月」を YYYYMM（日付パース補助用） */
     function currentYmSix() {
       const n = new Date();
       return `${n.getFullYear()}${String(n.getMonth() + 1).padStart(2, "0")}`;
@@ -100,20 +66,6 @@
       const m = +ymSix.slice(4, 6) - 1;
       const d = new Date(y, m + 1, 1);
       return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}`;
-    }
-
-    /** 今月から未来 N ヶ月までの YYYYMM 候補のみ（過去月は試さない） */
-    function sheetCandidatesForDiscovery() {
-      const now = new Date();
-      const ty = now.getFullYear();
-      const tm = now.getMonth() + 1;
-      let endY = ty;
-      let endM = tm + SHEET_PROBE_FUTURE_MONTHS;
-      while (endM > 12) {
-        endM -= 12;
-        endY += 1;
-      }
-      return sheetNamesRange(ty, tm, endY, endM);
     }
 
     function csvLooksValid(text) {
@@ -132,64 +84,6 @@
       const text = await res.text();
       if (!csvLooksValid(text)) return null;
       return text;
-    }
-
-    /** 公開エクスポート CSV（gid はシート URL の gid=） */
-    async function fetchSheetTextByGid(gid) {
-      const g = String(gid);
-      if (!/^\d+$/.test(g)) return null;
-      const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${encodeURIComponent(g)}`;
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const text = await res.text();
-      if (!csvLooksValid(text)) return null;
-      return text;
-    }
-
-    async function sheetExists(sheetName) {
-      const text = await fetchSheetText(sheetName);
-      return text !== null;
-    }
-
-    async function discoverMonthSheets() {
-      const cacheKey = `monthSheets_${SPREADSHEET_ID}_v7`;
-      try {
-        const raw = sessionStorage.getItem(cacheKey);
-        if (raw) {
-          const { list, ts } = JSON.parse(raw);
-          if (
-            Array.isArray(list) &&
-            Date.now() - (ts || 0) < SHEET_LIST_CACHE_MS
-          ) {
-            return list;
-          }
-        }
-      } catch (_) {
-        /* ignore */
-      }
-
-      const candidates = sheetCandidatesForDiscovery();
-      const batchSize = 6;
-      const found = [];
-      for (let i = 0; i < candidates.length; i += batchSize) {
-        const chunk = candidates.slice(i, i + batchSize);
-        const flags = await Promise.all(
-          chunk.map((ym) => sheetExists(ym).then((ok) => (ok ? ym : null))),
-        );
-        for (const ym of flags) {
-          if (ym) found.push(ym);
-        }
-      }
-      const list = found.sort((a, b) => b.localeCompare(a));
-      try {
-        sessionStorage.setItem(
-          cacheKey,
-          JSON.stringify({ list, ts: Date.now() }),
-        );
-      } catch (_) {
-        /* ignore */
-      }
-      return list;
     }
 
     /** 参加者は最大この人数ぶんの行を表示（空枠で埋める） */
@@ -393,14 +287,6 @@
         rows.push(row);
       }
       return rows;
-    }
-
-    function formatSheetLabel(name) {
-      const m = /^(\d{4})(\d{2})$/.exec(name.trim());
-      if (!m) return name;
-      const y = parseInt(m[1], 10);
-      const mo = parseInt(m[2], 10);
-      return `${y}年${mo}月（${name}）`;
     }
 
     function idx1(n) {
@@ -886,34 +772,15 @@
       }
     }
 
-    async function fetchLookupSessionsOnce() {
-      const lookupText = await fetchSheetText(LOOKUP_SHEET_NAME);
-      if (!lookupText || !csvLooksValid(lookupText)) return null;
-      const lookupSessions = buildSessions(parseCSV(lookupText));
-      return lookupSessions && lookupSessions.length ? lookupSessions : null;
-    }
-
-    /** 1 枚の月シートのセッション（参加者シートとマージ済み） */
-    async function fetchMergedSessionsForSheet(sheetName, lookupSessions) {
-      const mainText = await fetchSheetText(sheetName);
-      if (!mainText || !csvLooksValid(mainText)) return [];
-      let sessions = buildSessions(parseCSV(mainText));
-      if (lookupSessions && lookupSessions.length) {
-        sessions = mergeSessionsFromLookup(sessions, lookupSessions);
-      }
-      return sessions;
-    }
-
     function scrollSessionsToStart() {
       if (sessionsScrollEl) sessionsScrollEl.scrollLeft = 0;
     }
 
-    /** タブ CSV 用 IndexedDB キー（日付・1/2枚・gid 設定で無効化） */
-    function bundleTabCacheKey(includeSecond) {
+    /** record シート用 IndexedDB キー */
+    function bundleRecordCacheKey() {
       const d = new Date();
       const day = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-      const g2 = String(CSV_TAB2_GID || "").trim();
-      return `bundle_tabs_${SPREADSHEET_ID}_v8_${day}_${includeSecond ? "2" : "1"}_${CSV_TAB1_GID}_${g2}`;
+      return `bundle_record_${SPREADSHEET_ID}_v1_${day}`;
     }
 
     function openBundleIdb_() {
@@ -981,68 +848,33 @@
     }
 
     /**
-     * export CSV で 1 枚目（必須）＋条件付き 2 枚目と参加者シートを取得し、既存の tab bundle 組み立て用 JSON にする。
+     * シート「record」のみ取得（gviz CSV）。列形式の「参加者」は任意でマージ用に取得。
      */
-    async function fetchCsvTabBundleJson(includeSecond) {
-      const gid1 = Number(CSV_TAB1_GID);
-      if (!Number.isFinite(gid1)) return null;
-      const gid2Str = String(CSV_TAB2_GID || "").trim();
-      const gid2Parsed = gid2Str === "" ? NaN : Number(gid2Str);
-      const wantSecond =
-        includeSecond &&
-        gid2Str !== "" &&
-        Number.isFinite(gid2Parsed);
+    async function fetchRecordSheetBundleJson() {
+      const recordText = await fetchSheetText(RECORD_SHEET_NAME);
+      if (!recordText || !csvLooksValid(recordText)) return null;
 
-      const p1 = fetchSheetTextByGid(String(gid1));
-      const pLookup = fetchSheetText(LOOKUP_SHEET_NAME);
-      const p2 = wantSecond
-        ? fetchSheetTextByGid(String(gid2Parsed))
-        : Promise.resolve(null);
-      const [t1, lookupText, t2] = await Promise.all([p1, pLookup, p2]);
-
+      const lookupText = await fetchSheetText(LOOKUP_SHEET_NAME);
       let lookupSessions = [];
       if (lookupText && csvLooksValid(lookupText)) {
         lookupSessions = buildSessions(parseCSV(lookupText));
       }
 
-      function sessionsFromTabCsv(text) {
-        const rows = parseCSV(text);
-        if (looksLikeRecordSheetRows(rows)) {
-          return {
-            sessions: buildSessionsFromRecordRows(rows),
-            recordLayout: true,
-          };
-        }
-        return {
-          sessions: buildSessions(rows),
-          recordLayout: false,
-        };
-      }
-
-      const sheets = [];
-      if (t1 && csvLooksValid(t1)) {
-        const s1 = sessionsFromTabCsv(t1);
-        sheets.push({
-          tabIndex: 0,
-          sessions: s1.sessions,
-          recordLayout: s1.recordLayout,
-        });
-      }
-      if (wantSecond && t2 && csvLooksValid(t2)) {
-        const s2 = sessionsFromTabCsv(t2);
-        sheets.push({
-          tabIndex: 1,
-          sessions: s2.sessions,
-          recordLayout: s2.recordLayout,
-        });
-      }
-      if (!sheets.length) return null;
+      const rows = parseCSV(recordText);
+      const sessions = buildSessionsFromRecordRows(rows);
 
       return {
         ok: true,
+        recordMode: true,
         bundle: true,
         tabMode: true,
-        sheets,
+        sheets: [
+          {
+            tabIndex: 0,
+            sessions,
+            recordLayout: true,
+          },
+        ],
         lookup: {
           sheet: LOOKUP_SHEET_NAME,
           sessions: lookupSessions,
@@ -1098,17 +930,22 @@
       };
     }
 
-    async function tryBuildSessionPlanFromTabs(includeSecond) {
-      const cacheKey = bundleTabCacheKey(includeSecond);
+    async function tryBuildSessionPlanFromRecord() {
+      const cacheKey = bundleRecordCacheKey();
       const cached = await readBundleCache(cacheKey);
-      if (cached && cached.tabMode && Array.isArray(cached.sheets)) {
-        const fromCache = buildSessionPlanFromTabBundlePayload(cached);
-        if (fromCache.sessionsBySheet.size) return fromCache;
+      if (cached && cached.recordMode && Array.isArray(cached.sheets)) {
+        return {
+          ...buildSessionPlanFromTabBundlePayload(cached),
+          recordSourceOk: true,
+        };
       }
-      const json = await fetchCsvTabBundleJson(includeSecond);
+      const json = await fetchRecordSheetBundleJson();
       if (!json) return null;
       await writeBundleCache(cacheKey, json);
-      return buildSessionPlanFromTabBundlePayload(json);
+      return {
+        ...buildSessionPlanFromTabBundlePayload(json),
+        recordSourceOk: true,
+      };
     }
 
     /** パースした暦月がシート名 YYYYMM の月と一致するか（正しい月タブを優先する） */
@@ -1224,50 +1061,6 @@
       });
     }
 
-    /**
-     * 指定した YYYYMM シートだけ取得（gviz CSV、参加者とマージ）。
-     */
-    async function buildSessionPlan(sheetIds) {
-      const lookupSessions = await fetchLookupSessionsOnce();
-      const allEntries = [];
-      const sessionsBySheet = new Map();
-
-      for (let i = 0; i < sheetIds.length; i += SHEET_FETCH_CONCURRENCY) {
-        const chunk = sheetIds.slice(i, i + SHEET_FETCH_CONCURRENCY);
-        const parts = await Promise.all(
-          chunk.map((sheetName) =>
-            fetchMergedSessionsForSheet(sheetName, lookupSessions).then(
-              (sessions) => ({ sheetName, sessions }),
-            ),
-          ),
-        );
-        for (const { sheetName, sessions } of parts) {
-          const sorted = [...(sessions || [])].sort(
-            (a, b) => Number(a.col) - Number(b.col),
-          );
-          const list = filterSessionsFromTodayOnward(sorted, sheetName);
-          if (!list.length) continue;
-          if (!sessionsPlausibleForSheet(list, sheetName)) continue;
-          sessionsBySheet.set(sheetName, list);
-          const seenColInSheet = new Set();
-          for (const s of list) {
-            const dt = parseSessionDateFromCell(s.date, sheetName);
-            if (!dt) continue;
-            const colKey = `${sheetName}:${s.col}`;
-            if (seenColInSheet.has(colKey)) continue;
-            seenColInSheet.add(colKey);
-            allEntries.push({ sheetName, session: s, dt });
-          }
-        }
-      }
-
-      return {
-        lookupSessions,
-        allEntries,
-        sessionsBySheet,
-      };
-    }
-
     function renderUpcomingAll() {
       if (!sessionPlan) {
         renderSessions([], "読み込み中のデータがありません。");
@@ -1306,15 +1099,9 @@
     }
 
     async function initializeFromSpreadsheet() {
-      const includeSecond = new Date().getDate() >= 23;
-      setStatus(
-        "loading",
-        includeSecond && String(CSV_TAB2_GID || "").trim() !== ""
-          ? "読み込み中…"
-          : "読み込み中…",
-      );
-      const tabPlan = await tryBuildSessionPlanFromTabs(includeSecond);
-      if (tabPlan && tabPlan.sessionsBySheet.size) {
+      setStatus("loading", "読み込み中…");
+      const tabPlan = await tryBuildSessionPlanFromRecord();
+      if (tabPlan && tabPlan.recordSourceOk) {
         sessionPlan = tabPlan;
         wireRefreshBundleOnce();
         renderUpcomingAll();
@@ -1322,35 +1109,10 @@
         return;
       }
 
-      const list = await discoverMonthSheets();
-      if (!list.length) {
-        setStatus(
-          "error",
-          "表示できる月シート（YYYYMM）がありません。共有設定とシート名を確認してください。",
-        );
-        return;
-      }
-      const cur = currentYmSix();
-      const toFetch = list
-        .filter((ym) => /^\d{6}$/.test(ym) && ym >= cur)
-        .sort((a, b) => a.localeCompare(b));
-
-      setStatus("loading", "読み込み中…");
-      sessionPlan = await buildSessionPlan(toFetch);
-
-      if (
-        !sessionPlan.sessionsBySheet.size &&
-        !sessionPlan.allEntries.length
-      ) {
-        setStatus(
-          "error",
-          "日付として解釈できる列がありません。日付セルの形式を確認してください。",
-        );
-        return;
-      }
-      wireRefreshBundleOnce();
-      renderUpcomingAll();
-      setStatus("hidden", "");
+      setStatus(
+        "error",
+        `「${RECORD_SHEET_NAME}」シートを読み取れませんでした。共有設定（リンクを知っている全員が閲覧可）とシート名を確認してください。`,
+      );
     }
 
     async function bootstrap() {
