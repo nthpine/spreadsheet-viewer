@@ -735,33 +735,31 @@
 
             const nameEl = document.createElement("span");
             nameEl.className = "session__name";
+            if (slot.isFemale && !empty) {
+              nameEl.classList.add("session__name--female-red");
+            }
             nameEl.textContent = display;
 
             li.appendChild(numEl);
-            li.appendChild(nameEl);
 
             if (slot.isFirst && !empty) {
-              const badge = document.createElement("span");
-              badge.className = "session__badge";
-              badge.textContent = "初";
-              badge.title = "初参加";
-              li.appendChild(badge);
+              const firstMark = document.createElement("span");
+              firstMark.className = "session__mark session__mark--first";
+              firstMark.setAttribute("aria-hidden", "true");
+              firstMark.textContent = "🔰";
+              firstMark.title = "初参加";
+              li.appendChild(firstMark);
             }
 
-            if (slot.isFemale && !empty) {
-              const fb = document.createElement("span");
-              fb.className = "session__badge-female";
-              fb.textContent = "女";
-              fb.title = "女性";
-              li.appendChild(fb);
-            }
+            li.appendChild(nameEl);
 
             if (slot.isUnconfirmed && !empty) {
-              const ub = document.createElement("span");
-              ub.className = "session__badge-unconfirmed";
-              ub.textContent = "未";
-              ub.title = "未確認";
-              li.appendChild(ub);
+              const pendingMark = document.createElement("span");
+              pendingMark.className = "session__mark session__mark--pending";
+              pendingMark.setAttribute("aria-hidden", "true");
+              pendingMark.textContent = "❓";
+              pendingMark.title = "未確定";
+              li.appendChild(pendingMark);
             }
 
             ul.appendChild(li);
