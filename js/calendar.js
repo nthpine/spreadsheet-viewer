@@ -680,27 +680,22 @@
     const first = new Date(year, month - 1, 1);
     const startPad = first.getDay();
     const daysInMonth = new Date(year, month, 0).getDate();
-    const prevMonthDays = new Date(year, month - 1, 0).getDate();
-    const prevMonth = month === 1 ? 12 : month - 1;
-    const prevYear = month === 1 ? year - 1 : year;
 
     let p;
-    for (p = startPad - 1; p >= 0; p--) {
-      daysGrid.appendChild(createDayCell(prevYear, prevMonth, prevMonthDays - p, true));
+    for (p = 0; p < startPad; p++) {
+      daysGrid.appendChild(createEmptyDayCell());
     }
 
     let d;
     for (d = 1; d <= daysInMonth; d++) {
-      daysGrid.appendChild(createDayCell(year, month, d, false));
+      daysGrid.appendChild(createDayCell(year, month, d));
     }
 
     const totalCells = startPad + daysInMonth;
     const remainder = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-    const nextMonth = month === 12 ? 1 : month + 1;
-    const nextYear = month === 12 ? year + 1 : year;
     let n;
-    for (n = 1; n <= remainder; n++) {
-      daysGrid.appendChild(createDayCell(nextYear, nextMonth, n, true));
+    for (n = 0; n < remainder; n++) {
+      daysGrid.appendChild(createEmptyDayCell());
     }
 
     card.appendChild(daysGrid);
@@ -715,15 +710,19 @@
     return "future";
   }
 
-  function createDayCell(year, month, day, isOther) {
+  function createEmptyDayCell() {
+    const cell = document.createElement("div");
+    cell.className = "day-cell day-cell--empty";
+    cell.setAttribute("aria-hidden", "true");
+    return cell;
+  }
+
+  function createDayCell(year, month, day) {
     const cell = document.createElement("div");
     const classes = ["day-cell"];
-    if (isOther) classes.push("other-month");
-    if (!isOther) {
-      const kind = getDateKind(year, month, day);
-      if (kind === "past") classes.push("past");
-      else if (kind === "today") classes.push("today");
-    }
+    const kind = getDateKind(year, month, day);
+    if (kind === "past") classes.push("past");
+    else if (kind === "today") classes.push("today");
     cell.className = classes.join(" ");
 
     const dateObj = new Date(year, month - 1, day);
@@ -736,14 +735,12 @@
     num.textContent = day;
     cell.appendChild(num);
 
-    if (!isOther) {
-      const events = STATE.schedules.filter(function (s) {
-        return s.year === year && s.month === month && s.day === day;
-      });
-      events.forEach(function (ev) {
-        cell.appendChild(createEventChip(ev));
-      });
-    }
+    const events = STATE.schedules.filter(function (s) {
+      return s.year === year && s.month === month && s.day === day;
+    });
+    events.forEach(function (ev) {
+      cell.appendChild(createEventChip(ev));
+    });
 
     return cell;
   }
