@@ -52,17 +52,25 @@ header .subtitle {
   opacity: 0.9;
 }
 
-.btn-refresh {
+.btn-refresh,
+.btn-header-link {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.5rem 0.85rem;
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.15);
   color: #fff;
   font-family: inherit;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-refresh {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .btn-refresh:hover:not(:disabled) {
@@ -74,6 +82,27 @@ header .subtitle {
   cursor: not-allowed;
 }
 
+.btn-header-link--instagram {
+  background: rgba(131, 58, 180, 0.85);
+}
+
+.btn-header-link--instagram:hover {
+  background: rgba(131, 58, 180, 1);
+}
+
+.btn-header-link--youtube {
+  background: rgba(220, 38, 38, 0.9);
+}
+
+.btn-header-link--youtube:hover {
+  background: rgba(220, 38, 38, 1);
+}
+
+.btn-header-link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 .header-action-bar {
   display: flex;
   flex-wrap: wrap;
@@ -81,32 +110,6 @@ header .subtitle {
   margin-top: 0.85rem;
   padding-top: 0.85rem;
   border-top: 1px solid rgba(255, 255, 255, 0.25);
-}
-
-.btn-contact {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.55rem 1.1rem;
-  border-radius: 8px;
-  background: #fff;
-  color: #374151;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-decoration: none;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-}
-
-.btn-contact:hover {
-  background: #f9fafb;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-}
-
-.btn-contact:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
 }
 
 main {
