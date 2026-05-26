@@ -681,10 +681,12 @@
     const startPad = first.getDay();
     const daysInMonth = new Date(year, month, 0).getDate();
     const prevMonthDays = new Date(year, month - 1, 0).getDate();
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
 
     let p;
     for (p = startPad - 1; p >= 0; p--) {
-      daysGrid.appendChild(createDayCell(year, month, prevMonthDays - p, true));
+      daysGrid.appendChild(createDayCell(prevYear, prevMonth, prevMonthDays - p, true));
     }
 
     let d;
@@ -694,9 +696,11 @@
 
     const totalCells = startPad + daysInMonth;
     const remainder = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+    const nextMonth = month === 12 ? 1 : month + 1;
+    const nextYear = month === 12 ? year + 1 : year;
     let n;
     for (n = 1; n <= remainder; n++) {
-      daysGrid.appendChild(createDayCell(year, month + 1, n, true));
+      daysGrid.appendChild(createDayCell(nextYear, nextMonth, n, true));
     }
 
     card.appendChild(daysGrid);
@@ -704,10 +708,8 @@
   }
 
   function getDateKind(year, month, day) {
-    const cellDate = new Date(year, month - 1, day);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    cellDate.setHours(0, 0, 0, 0);
+    const cellDate = stripTime(new Date(year, month - 1, day));
+    const today = getTodayLocal();
     if (cellDate.getTime() < today.getTime()) return "past";
     if (cellDate.getTime() === today.getTime()) return "today";
     return "future";
@@ -717,9 +719,11 @@
     const cell = document.createElement("div");
     const classes = ["day-cell"];
     if (isOther) classes.push("other-month");
-    const kind = getDateKind(year, month, day);
-    if (kind === "past") classes.push("past");
-    else if (kind === "today") classes.push("today");
+    if (!isOther) {
+      const kind = getDateKind(year, month, day);
+      if (kind === "past") classes.push("past");
+      else if (kind === "today") classes.push("today");
+    }
     cell.className = classes.join(" ");
 
     const dateObj = new Date(year, month - 1, day);
