@@ -842,22 +842,32 @@
     const first = new Date(year, month - 1, 1);
     const startPad = first.getDay();
     const daysInMonth = new Date(year, month, 0).getDate();
+    const allCells = [];
 
     let p;
     for (p = 0; p < startPad; p++) {
-      daysGrid.appendChild(createEmptyDayCell());
+      allCells.push(createEmptyDayCell());
     }
 
     let d;
     for (d = 1; d <= daysInMonth; d++) {
-      daysGrid.appendChild(createDayCell(year, month, d));
+      allCells.push(createDayCell(year, month, d));
     }
 
     const totalCells = startPad + daysInMonth;
     const remainder = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
     let n;
     for (n = 0; n < remainder; n++) {
-      daysGrid.appendChild(createEmptyDayCell());
+      allCells.push(createEmptyDayCell());
+    }
+
+    for (let i = 0; i < allCells.length; i += 7) {
+      const weekRow = allCells.slice(i, i + 7);
+      if (!isWeekFullyPast(weekRow)) {
+        weekRow.forEach(function (cell) {
+          daysGrid.appendChild(cell);
+        });
+      }
     }
 
     card.appendChild(daysGrid);
@@ -870,6 +880,25 @@
     if (cellDate.getTime() < today.getTime()) return "past";
     if (cellDate.getTime() === today.getTime()) return "today";
     return "future";
+  }
+
+  function getWeekRowLatestDate(cells) {
+    let latest = null;
+    cells.forEach(function (cell) {
+      const y = cell.dataset.year;
+      if (!y) return;
+      const m = parseInt(cell.dataset.month, 10);
+      const d = parseInt(cell.dataset.day, 10);
+      const dt = stripTime(new Date(parseInt(y, 10), m - 1, d));
+      if (!latest || dt.getTime() > latest.getTime()) latest = dt;
+    });
+    return latest;
+  }
+
+  function isWeekFullyPast(cells) {
+    const latest = getWeekRowLatestDate(cells);
+    if (!latest) return true;
+    return latest.getTime() < getTodayLocal().getTime();
   }
 
   function createEmptyDayCell() {
@@ -886,6 +915,9 @@
     if (kind === "past") classes.push("past");
     else if (kind === "today") classes.push("today");
     cell.className = classes.join(" ");
+    cell.dataset.year = String(year);
+    cell.dataset.month = String(month);
+    cell.dataset.day = String(day);
 
     const dateObj = new Date(year, month - 1, day);
     const dow = dateObj.getDay();
