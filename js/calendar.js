@@ -691,6 +691,15 @@
     return p.replace(/^@+/, "").trim() || "—";
   }
 
+  function chipPinSvgHtml() {
+    return (
+      '<span class="chip-pin" aria-hidden="true">' +
+      '<svg class="chip-pin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
+      '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/>' +
+      '<circle cx="12" cy="10" r="3"/></svg></span>'
+    );
+  }
+
   function chipPlaceLineHtml(place) {
     const name = normalizePlaceName(place);
     if (name === "—") {
@@ -698,7 +707,7 @@
     }
     return (
       '<span class="chip-line chip-line--place">' +
-      '<span class="chip-pin" aria-hidden="true">📍</span>' +
+      chipPinSvgHtml() +
       '<span class="chip-place-name">' +
       escapeHtml(name) +
       "</span></span>"

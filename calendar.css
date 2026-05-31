@@ -450,14 +450,33 @@ body.cyber-cal .day-cell.past .event-chip.is-full {
 body.cyber-cal .event-chip .chip-line--place {
   display: flex;
   align-items: flex-start;
-  gap: 0.12em;
+  gap: 0.2em;
   word-break: break-word;
 }
 
 body.cyber-cal .event-chip .chip-pin {
-  font-size: 0.4em;
-  line-height: 1.35;
+  display: inline-flex;
   flex-shrink: 0;
+  width: 0.72em;
+  min-width: 8px;
+  height: 0.72em;
+  min-height: 8px;
+  margin-top: 0.05em;
+  color: #0284c7;
+}
+
+body.cyber-cal .event-chip .chip-pin-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+body.cyber-cal .event-chip.is-full .chip-pin {
+  color: #dc2626;
+}
+
+body.cyber-cal .day-cell.past .event-chip .chip-pin {
+  color: #6b7280;
 }
 
 body.cyber-cal .event-chip .chip-place-name {
