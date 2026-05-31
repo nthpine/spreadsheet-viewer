@@ -1,0 +1,308 @@
+/* キャンバス用フォント（GitHub Pages でも確実に読み込む） */
+@font-face {
+  font-family: "Orbitron";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url(https://fonts.gstatic.com/s/orbitron/v35/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1ny_Cmxpg.ttf)
+    format("truetype");
+}
+@font-face {
+  font-family: "Orbitron";
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url(https://fonts.gstatic.com/s/orbitron/v35/yMJMMIlzdpvBhQQL_SC3X9yhF25-T1nysimxpg.ttf)
+    format("truetype");
+}
+@font-face {
+  font-family: "Zen Kaku Gothic New";
+  font-style: normal;
+  font-weight: 700;
+  font-display: block;
+  src: url(https://fonts.gstatic.com/s/zenkakugothicnew/v18/gNMVW2drQpDw0GjzrVNFf_valaDBcznOqodNaWQ.ttf)
+    format("truetype");
+}
+@font-face {
+  font-family: "Zen Kaku Gothic New";
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url(https://fonts.gstatic.com/s/zenkakugothicnew/v18/gNMVW2drQpDw0GjzrVNFf_valaDBcznOqr9PaWQ.ttf)
+    format("truetype");
+}
+
+:root {
+  --bg-deep: #0b1020;
+  --bg-mid: #15102a;
+  --accent-cyan: #22d3ee;
+  --accent-purple: #a78bfa;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --radius: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body.invite-page {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Zen Kaku Gothic New", "Hiragino Sans", "Meiryo", sans-serif;
+  color: var(--text);
+  background: linear-gradient(160deg, var(--bg-deep) 0%, #1a1035 45%, var(--bg-mid) 100%);
+  line-height: 1.5;
+}
+
+body.invite-page > header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.invite-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+body.invite-page > header h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+body.invite-page > header .subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.invite-back-link {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  text-decoration: none;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.invite-back-link:hover {
+  border-color: var(--accent-cyan);
+}
+
+body.invite-page > main {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem 1rem 2rem;
+}
+
+.invite-panel {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.invite-panel h2 {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  letter-spacing: 0.02em;
+}
+
+body.invite-page label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.invite-field {
+  margin-bottom: 0.9rem;
+}
+
+.invite-field:last-child {
+  margin-bottom: 0;
+}
+
+body.invite-page input[type="date"],
+body.invite-page input[type="text"],
+body.invite-page input[type="number"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  font-size: 16px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  outline: none;
+}
+
+body.invite-page input:focus {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+}
+
+.recruit-display {
+  text-align: center;
+  padding: 0.75rem 0 0.25rem;
+}
+
+.recruit-display .value {
+  font-family: "Orbitron", sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  text-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
+}
+
+.recruit-display .label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.invite-preview-wrap {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: #000;
+  aspect-ratio: 9 / 16;
+  max-height: 70vh;
+  margin: 0 auto;
+}
+
+#exportCanvas {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#saveImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  -webkit-touch-callout: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.save-hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.invite-btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.invite-btn-secondary {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.invite-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.invite-btn-primary {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bg-deep);
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(34, 211, 238, 0.35);
+}
+
+.invite-btn-primary:disabled,
+.invite-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.invite-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.invite-status.error {
+  color: #f87171;
+}
+
+.invite-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  color: var(--muted);
+}
+
+.invite-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--glass-border);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: invite-spin 0.75s linear infinite;
+}
+
+@keyframes invite-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+#appContent {
+  display: none;
+}
+
+#appContent.ready {
+  display: block;
+}

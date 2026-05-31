@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NORTH PINE 募集画像</title>
+  <meta name="description" content="NORTH PINE 練習の募集画像（Instagramストーリー用 1080×1920）" />
+  <meta
+    name="gas-web-app-url"
+    content="https://script.google.com/macros/s/AKfycbwN-Fi6SwzM2bp3WW_OmJ7kGNSU3Vl3_n77JmJ2e8IcDZqUl5tvJJytD7RLs5Y96dB2/exec"
+  />
+  <link rel="stylesheet" href="invite.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body class="invite-page">
+  <header>
+    <div class="invite-header-top">
+      <div>
+        <h1>NORTH PINE 募集画像</h1>
+        <p class="subtitle">Instagramストーリー用（1080×1920）— プレビューを長押し／右クリックで保存</p>
+      </div>
+      <a href="index.html" class="invite-back-link">← カレンダー</a>
+    </div>
+  </header>
+
+  <main>
+    <div id="loadingArea" class="invite-loading" role="status" aria-live="polite">
+      <div class="invite-spinner" aria-hidden="true"></div>
+      <p>データを読み込んでいます…</p>
+    </div>
+
+    <div id="appContent">
+      <section class="invite-panel" aria-labelledby="formTitle">
+        <h2 id="formTitle">入力</h2>
+        <div class="invite-field">
+          <label for="inputDate">開催日付</label>
+          <input type="date" id="inputDate" />
+        </div>
+        <div class="invite-field">
+          <label for="inputPlace">開催場所</label>
+          <input type="text" id="inputPlace" placeholder="例: 中央体育館" />
+        </div>
+        <div class="invite-field">
+          <label for="inputFilled">現在集まっている人数（0〜15）</label>
+          <input type="number" id="inputFilled" min="0" max="15" step="1" value="0" />
+        </div>
+        <div class="recruit-display" aria-live="polite">
+          <div class="value" id="recruitValue">15名募集中</div>
+          <div class="label">募集人数（定員15人 − 現在人数）</div>
+        </div>
+      </section>
+
+      <section class="invite-panel" aria-labelledby="previewTitle">
+        <h2 id="previewTitle">プレビュー</h2>
+        <div class="invite-preview-wrap">
+          <canvas id="exportCanvas" width="1080" height="1920" aria-hidden="true"></canvas>
+          <img
+            id="saveImage"
+            alt="募集画像（長押しまたは右クリックで保存）"
+            width="1080"
+            height="1920"
+          />
+        </div>
+        <p class="save-hint">
+          スマホ: 画像を<strong>長押し</strong> →「写真を保存」／
+          PC: 画像を<strong>右クリック</strong> →「画像を保存」
+        </p>
+      </section>
+
+      <div class="invite-btn-row">
+        <button type="button" id="btnCopy" class="invite-btn-primary" disabled>
+          画像をクリップボードにコピー
+        </button>
+        <button type="button" id="btnOpenTab" class="invite-btn-secondary" disabled>
+          画像を新しいタブで開く
+        </button>
+        <button type="button" id="btnDownload" class="invite-btn-secondary" disabled>
+          ファイルとしてダウンロード
+        </button>
+      </div>
+      <p id="statusMsg" class="invite-status" role="status"></p>
+    </div>
+  </main>
+
+  <script src="js/invite.js"></script>
+</body>
+</html>
