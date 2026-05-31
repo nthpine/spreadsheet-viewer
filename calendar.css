@@ -1,35 +1,57 @@
 :root {
-  --bg: #f4f6f8;
-  --card: #ffffff;
-  --primary: #1a73e8;
-  --primary-dark: #1558b0;
+  --bg: #eef1f5;
+  --bg-grid: rgba(0, 120, 180, 0.06);
+  --card: #fafbfc;
+  --card-elevated: #f3f4f6;
+  --primary: #0099dd;
+  --primary-dark: #0077aa;
+  --accent-glow: rgba(0, 153, 221, 0.35);
   --text: #1f2933;
   --muted: #6b7280;
-  --border: #e5e7eb;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --border: #d1d5db;
+  --border-bright: rgba(0, 153, 221, 0.45);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   --female: #dc2626;
   --first: #ca8a04;
   --unconfirmed: #7c3aed;
-  --unconfirmed-bg: #f5f3ff;
+  --unconfirmed-bg: rgba(124, 58, 237, 0.1);
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
+body.cyber-cal {
   margin: 0;
-  font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
-  background: var(--bg);
+  font-family: "Rajdhani", "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
   color: var(--text);
   line-height: 1.5;
+  min-height: 100vh;
 }
 
-header {
-  background: linear-gradient(135deg, #9ca3af, #6b7280);
-  color: #fff;
+body.cyber-cal header {
+  background: linear-gradient(160deg, #f8f9fb 0%, #e8ebf0 55%, #dfe3ea 100%);
+  color: var(--text);
   padding: 1rem 1.25rem;
   box-shadow: var(--shadow);
+  border-bottom: 1px solid var(--border-bright);
+  position: relative;
+}
+
+body.cyber-cal header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--primary), transparent);
+  opacity: 0.6;
 }
 
 .header-top {
@@ -40,41 +62,49 @@ header {
   flex-wrap: wrap;
 }
 
-header h1 {
+body.cyber-cal header h1 {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #1a2332;
+  text-shadow: 0 0 20px rgba(0, 153, 221, 0.15);
 }
 
-header .subtitle {
+body.cyber-cal header .subtitle {
   margin: 0.25rem 0 0;
-  font-size: 0.85rem;
-  opacity: 0.9;
+  font-size: 0.88rem;
+  color: var(--muted);
+  font-family: "Orbitron", "Segoe UI", sans-serif;
+  letter-spacing: 0.04em;
 }
 
-.btn-refresh,
-.btn-header-link {
+body.cyber-cal .btn-refresh,
+body.cyber-cal .btn-header-link {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0.5rem 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 8px;
+  border: 1px solid var(--border-bright);
+  border-radius: 3px;
   color: #fff;
   font-family: inherit;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   text-decoration: none;
+  transition: box-shadow 0.15s, background 0.15s;
 }
 
-.btn-refresh {
-  background: rgba(255, 255, 255, 0.15);
+body.cyber-cal .btn-refresh {
+  background: rgba(0, 130, 190, 0.9);
+  border-color: rgba(0, 153, 221, 0.6);
 }
 
-.btn-refresh:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.25);
+body.cyber-cal .btn-refresh:hover:not(:disabled) {
+  background: rgba(0, 150, 210, 1);
+  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .btn-refresh:disabled {
@@ -82,19 +112,36 @@ header .subtitle {
   cursor: not-allowed;
 }
 
-.btn-header-link--instagram {
-  background: rgba(131, 58, 180, 0.85);
+body.cyber-cal .btn-header-link--instagram {
+  border-color: transparent;
+  background: linear-gradient(
+    135deg,
+    #f9ce34 0%,
+    #ee2a7b 35%,
+    #6228d7 68%,
+    #8134af 100%
+  );
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(131, 58, 180, 0.35);
 }
 
-.btn-header-link--instagram:hover {
-  background: rgba(131, 58, 180, 1);
+body.cyber-cal .btn-header-link--instagram:hover {
+  background: linear-gradient(
+    135deg,
+    #ffd54f 0%,
+    #f03e8c 35%,
+    #7c3aed 68%,
+    #9333ea 100%
+  );
+  box-shadow: 0 4px 14px rgba(238, 42, 123, 0.45);
 }
 
-.btn-header-link--youtube {
+body.cyber-cal .btn-header-link--youtube {
   background: rgba(220, 38, 38, 0.9);
+  color: #fff;
 }
 
-.btn-header-link--youtube:hover {
+body.cyber-cal .btn-header-link--youtube:hover {
   background: rgba(220, 38, 38, 1);
 }
 
@@ -103,13 +150,13 @@ header .subtitle {
   outline-offset: 2px;
 }
 
-.header-action-bar {
+body.cyber-cal .header-action-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.85rem;
   padding-top: 0.85rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.25);
+  border-top: 1px solid rgba(0, 170, 255, 0.2);
 }
 
 main {
@@ -130,17 +177,19 @@ main {
   display: block;
 }
 
-.status--loading {
-  background: #e8f0fe;
+body.cyber-cal .status--loading {
+  background: #e0f2fe;
   color: var(--primary-dark);
+  border: 1px solid var(--border-bright);
 }
 
-.status--error {
+body.cyber-cal .status--error {
   background: #fef2f2;
   color: #b91c1c;
+  border: 1px solid rgba(248, 113, 113, 0.4);
 }
 
-.loading-panel {
+body.cyber-cal .loading-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -148,6 +197,8 @@ main {
   gap: 0.85rem;
   padding: 3rem 1rem;
   color: var(--muted);
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 0.06em;
 }
 
 .loading-panel p {
@@ -155,10 +206,10 @@ main {
   font-size: 0.95rem;
 }
 
-.loading-spinner {
+body.cyber-cal .loading-spinner {
   width: 36px;
   height: 36px;
-  border: 3px solid var(--border);
+  border: 3px solid rgba(0, 170, 255, 0.15);
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
@@ -170,12 +221,13 @@ main {
   }
 }
 
-.error-banner {
+body.cyber-cal .error-banner {
   text-align: center;
   padding: 2rem 1rem;
   color: #b91c1c;
   background: #fef2f2;
-  border-radius: 8px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 3px;
   margin-bottom: 1rem;
 }
 
@@ -190,18 +242,23 @@ main {
   }
 }
 
-.month-card {
+body.cyber-cal .month-card {
   background: var(--card);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  border-radius: 3px;
+  box-shadow: var(--shadow), 0 0 0 1px var(--border);
   overflow: hidden;
+  border: 1px solid var(--border-bright);
 }
 
-.month-title {
+body.cyber-cal .month-title {
   padding: 0.75rem 1rem;
-  font-weight: 600;
-  background: #eef2ff;
-  border-bottom: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  background: linear-gradient(90deg, rgba(0, 153, 221, 0.12), transparent);
+  border-bottom: 1px solid var(--border-bright);
+  color: #0c4a6e;
 }
 
 .weekdays,
@@ -211,117 +268,131 @@ main {
   width: 100%;
 }
 
-.weekdays span {
+body.cyber-cal .weekdays span {
   text-align: center;
   font-size: 0.75rem;
+  font-weight: 600;
   color: var(--muted);
-  padding: 0.4rem 0;
-  background: #fafafa;
+  padding: 0.45rem 0;
+  background: var(--card-elevated);
+  border-bottom: 1px solid var(--border);
+  font-family: "Orbitron", sans-serif;
+  letter-spacing: 0.05em;
 }
 
-.weekdays .sun {
+body.cyber-cal .weekdays .sun {
   color: #dc2626;
 }
 
-.weekdays .sat {
-  color: #2563eb;
+body.cyber-cal .weekdays .sat {
+  color: #0284c7;
 }
 
-.day-cell {
+body.cyber-cal .day-cell {
   min-width: 0;
   min-height: 80px;
   border: 1px solid var(--border);
   padding: 3px;
   background: #fff;
   overflow: hidden;
+  transition: background 0.12s;
 }
 
-.day-cell--empty {
-  background: #fafafa;
-  border-color: #f3f4f6;
+body.cyber-cal .day-cell--empty {
+  background: #f3f4f6;
+  border-color: #e5e7eb;
   min-height: 80px;
   pointer-events: none;
+  opacity: 0.65;
 }
 
-.day-cell.past {
-  background: #f3f4f6;
-  opacity: 0.75;
+body.cyber-cal .day-cell.past {
+  background: #f5f6f8;
+  opacity: 0.85;
 }
 
-.day-cell.past .day-num,
-.day-cell.past .event-chip {
+body.cyber-cal .day-cell.past .day-num,
+body.cyber-cal .day-cell.past .event-chip {
   color: #9ca3af;
 }
 
-.day-cell.past .event-chip {
+body.cyber-cal .day-cell.past .event-chip {
   background: #e5e7eb;
+  border-color: #d1d5db;
 }
 
-.day-cell.today {
+body.cyber-cal .day-cell.today {
   background: #fffbeb;
-  box-shadow: inset 0 0 0 2px #f59e0b;
+  box-shadow: inset 0 0 0 2px var(--primary), 0 0 10px rgba(0, 153, 221, 0.15);
 }
 
-.day-cell.today .day-num {
+body.cyber-cal .day-cell.today .day-num {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 1.5rem;
   height: 1.5rem;
-  border-radius: 50%;
-  background: #f59e0b;
+  border-radius: 2px;
+  background: var(--primary);
   color: #fff !important;
+  box-shadow: 0 0 8px var(--accent-glow);
+  font-family: "Orbitron", sans-serif;
 }
 
-.day-num {
+body.cyber-cal .day-num {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 2px;
+  font-family: "Orbitron", sans-serif;
 }
 
-.day-num.sun {
+body.cyber-cal .day-num.sun {
   color: #dc2626;
 }
 
-.day-num.sat {
-  color: #2563eb;
+body.cyber-cal .day-num.sat {
+  color: #0284c7;
 }
 
-.event-chip {
+body.cyber-cal .event-chip {
   display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   text-align: left;
-  border: none;
-  border-radius: 5px;
-  background: #e8f0fe;
-  color: #174ea6;
+  border: 1px solid rgba(0, 153, 221, 0.35);
+  border-radius: 2px;
+  background: #e8f4fc;
+  color: #0c4a6e;
   font-size: 0.58rem;
   padding: 2px 4px;
   margin-bottom: 2px;
   cursor: pointer;
   line-height: 1.2;
   overflow-wrap: anywhere;
+  transition: background 0.12s, box-shadow 0.12s;
 }
 
-.event-chip:hover {
-  background: #d2e3fc;
+body.cyber-cal .event-chip:hover {
+  background: #d2e8f8;
+  box-shadow: 0 0 8px rgba(0, 153, 221, 0.25);
 }
 
-.event-chip.is-full {
-  background: #fecaca;
-  color: #991b1b;
-  box-shadow: inset 0 0 0 1px #f87171;
-}
-
-.event-chip.is-full:hover {
-  background: #fca5a5;
-}
-
-.day-cell.past .event-chip.is-full {
+body.cyber-cal .event-chip.is-full {
   background: #fee2e2;
-  color: #b91c1c;
+  color: #991b1b;
+  border-color: rgba(248, 113, 113, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.25);
+}
+
+body.cyber-cal .event-chip.is-full:hover {
+  background: #fecaca;
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.2);
+}
+
+body.cyber-cal .day-cell.past .event-chip.is-full {
+  background: #f3e8e8;
+  color: #9ca3af;
   box-shadow: none;
 }
 
