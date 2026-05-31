@@ -729,8 +729,23 @@
       if (!isNaN(d.getTime())) dowJp = "(" + WEEKDAYS[d.getDay()] + ")";
     }
 
-    const dateMain =
-      month != null && day != null ? month + "/" + day : label || "—";
+    let dateMain;
+    if (month != null && day != null) {
+      dateMain = month + "/" + day;
+    } else {
+      const withoutDow = label.replace(/[（(][日月火水木金土][）)]/g, "").trim();
+      const md = withoutDow.match(/(\d{1,2})[\/．\.](\d{1,2})/);
+      if (md) {
+        dateMain = parseInt(md[1], 10) + "/" + parseInt(md[2], 10);
+      } else {
+        const jpOnly = withoutDow.match(/(\d{1,2})月(\d{1,2})日/);
+        if (jpOnly) {
+          dateMain = parseInt(jpOnly[1], 10) + "/" + parseInt(jpOnly[2], 10);
+        } else {
+          dateMain = withoutDow || "—";
+        }
+      }
+    }
 
     return { year: String(year), dateMain: dateMain, dowJp: dowJp };
   }

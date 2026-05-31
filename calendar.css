@@ -496,21 +496,6 @@ main {
   opacity: 0.9;
 }
 
-.lineup-brand {
-  margin: 0;
-  font-family: "Rajdhani", "Segoe UI", sans-serif;
-  font-size: 1.05rem;
-  font-weight: 700;
-  font-style: italic;
-  letter-spacing: 0.06em;
-  background: linear-gradient(180deg, #fde68a 0%, #d97706 55%, #92400e 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.35));
-  white-space: nowrap;
-}
-
 .lineup-frame {
   position: relative;
   border: 2px solid #00aaff;
@@ -521,20 +506,6 @@ main {
     inset 0 0 24px rgba(0, 170, 255, 0.08);
   background: rgba(0, 8, 18, 0.92);
   overflow: hidden;
-}
-
-.lineup-watermark {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: "Orbitron", sans-serif;
-  font-size: clamp(5rem, 28vw, 8rem);
-  font-weight: 900;
-  color: rgba(255, 255, 255, 0.04);
-  pointer-events: none;
-  user-select: none;
 }
 
 .lineup-table {
