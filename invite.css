@@ -216,54 +216,6 @@ body.invite-page input:focus {
   line-height: 1.45;
 }
 
-.invite-btn-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.invite-btn-secondary {
-  display: block;
-  width: 100%;
-  min-height: 44px;
-  padding: 0.65rem 1rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  cursor: pointer;
-}
-
-.invite-btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.invite-btn-primary {
-  display: block;
-  width: 100%;
-  min-height: 48px;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--bg-deep);
-  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  box-shadow: 0 4px 24px rgba(34, 211, 238, 0.35);
-}
-
-.invite-btn-primary:disabled,
-.invite-btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
 .invite-status {
   font-size: 0.85rem;
   color: var(--muted);

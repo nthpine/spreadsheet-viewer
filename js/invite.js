@@ -474,12 +474,6 @@
     }
   }
 
-  function setActionButtonsEnabled(enabled) {
-    document.getElementById("btnCopy").disabled = !enabled;
-    document.getElementById("btnOpenTab").disabled = !enabled;
-    document.getElementById("btnDownload").disabled = !enabled;
-  }
-
   function applyBootstrap(data) {
     if (!data) return;
     if (data.dateIso) document.getElementById("inputDate").value = data.dateIso;
@@ -495,7 +489,6 @@
   function showReady() {
     document.getElementById("loadingArea").style.display = "none";
     document.getElementById("appContent").classList.add("ready");
-    setActionButtonsEnabled(true);
     ready = true;
     if (bgReady && fontsReady && pinIconReady) drawStory();
   }
@@ -503,110 +496,11 @@
   function showError(msg) {
     document.getElementById("loadingArea").style.display = "none";
     document.getElementById("appContent").classList.add("ready");
-    setActionButtonsEnabled(true);
     const el = document.getElementById("statusMsg");
     el.textContent = msg;
     el.className = "invite-status error";
     ready = true;
     if (bgReady && fontsReady && pinIconReady) drawStory();
-  }
-
-  function ensureImageReady() {
-    const state = getFormState();
-    if (!state.dateIso) {
-      const el = document.getElementById("statusMsg");
-      el.textContent = "開催日付を選択してください。";
-      el.className = "invite-status error";
-      return null;
-    }
-    drawStory();
-    if (!lastPngDataUrl) {
-      const el = document.getElementById("statusMsg");
-      el.textContent = "画像の生成に失敗しました。";
-      el.className = "invite-status error";
-      return null;
-    }
-    return state;
-  }
-
-  function getInviteFilename(state) {
-    return "game_invite_" + state.dateIso.replace(/-/g, "") + ".png";
-  }
-
-  function copyImageToClipboard() {
-    const state = ensureImageReady();
-    if (!state) return;
-    if (!navigator.clipboard || !window.ClipboardItem) {
-      document.getElementById("statusMsg").textContent =
-        "このブラウザではコピーできません。画像を長押しして保存してください。";
-      document.getElementById("statusMsg").className = "invite-status error";
-      return;
-    }
-    canvas.toBlob(function (blob) {
-      if (!blob) {
-        document.getElementById("statusMsg").textContent = "画像の生成に失敗しました。";
-        document.getElementById("statusMsg").className = "invite-status error";
-        return;
-      }
-      navigator.clipboard
-        .write([new ClipboardItem({ "image/png": blob })])
-        .then(function () {
-          document.getElementById("statusMsg").textContent =
-            "クリップボードにコピーしました。LINEやInstagramに貼り付けできます。";
-          document.getElementById("statusMsg").className = "invite-status";
-        })
-        .catch(function () {
-          document.getElementById("statusMsg").textContent =
-            "コピーできませんでした。画像を長押しして保存してください。";
-          document.getElementById("statusMsg").className = "invite-status error";
-        });
-    }, "image/png");
-  }
-
-  function openImageInNewTab() {
-    const state = ensureImageReady();
-    if (!state) return;
-    const w = window.open("", "_blank");
-    if (!w) {
-      document.getElementById("statusMsg").textContent =
-        "ポップアップがブロックされました。画像を長押しして保存してください。";
-      document.getElementById("statusMsg").className = "invite-status error";
-      return;
-    }
-    w.document.title = getInviteFilename(state);
-    w.document.body.style.margin = "0";
-    w.document.body.style.background = "#000";
-    const img = w.document.createElement("img");
-    img.src = lastPngDataUrl;
-    img.alt = "募集画像";
-    img.style.display = "block";
-    img.style.maxWidth = "100%";
-    img.style.margin = "0 auto";
-    w.document.body.appendChild(img);
-    document.getElementById("statusMsg").textContent =
-      "新しいタブで開きました。画像を右クリック／長押しで保存できます。";
-    document.getElementById("statusMsg").className = "invite-status";
-  }
-
-  function downloadImage() {
-    const state = ensureImageReady();
-    if (!state) return;
-    const filename = getInviteFilename(state);
-    canvas.toBlob(function (blob) {
-      if (!blob) {
-        document.getElementById("statusMsg").textContent = "画像の生成に失敗しました。";
-        document.getElementById("statusMsg").className = "invite-status error";
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.download = filename;
-      a.href = url;
-      a.click();
-      URL.revokeObjectURL(url);
-      document.getElementById("statusMsg").textContent = "ダウンロードしました: " + filename;
-      document.getElementById("statusMsg").className = "invite-status";
-    }, "image/png");
   }
 
   function bindEvents() {
@@ -621,9 +515,6 @@
         scheduleDraw();
       });
     });
-    document.getElementById("btnCopy").addEventListener("click", copyImageToClipboard);
-    document.getElementById("btnOpenTab").addEventListener("click", openImageInNewTab);
-    document.getElementById("btnDownload").addEventListener("click", downloadImage);
   }
 
   async function loadBootstrap() {
