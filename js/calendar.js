@@ -1079,6 +1079,15 @@
       });
     }
 
+    if (window.__MOCK_CALENDAR__) {
+      var mock = window.__MOCK_CALENDAR__;
+      if (mock.groupByKey && typeof mock.groupByKey === "object") {
+        STATE.groupByKey = mock.groupByKey;
+      }
+      onCalendarLoaded(mock);
+      return;
+    }
+
     bootstrap(false);
   });
 })();

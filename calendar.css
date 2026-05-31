@@ -34,7 +34,7 @@ body.cyber-cal {
   min-height: 100vh;
 }
 
-body.cyber-cal header {
+body.cyber-cal > header {
   background: linear-gradient(160deg, #f8f9fb 0%, #e8ebf0 55%, #dfe3ea 100%);
   color: var(--text);
   padding: 1rem 1.25rem;
@@ -43,7 +43,7 @@ body.cyber-cal header {
   position: relative;
 }
 
-body.cyber-cal header::after {
+body.cyber-cal > header::after {
   content: "";
   position: absolute;
   left: 0;
@@ -62,7 +62,7 @@ body.cyber-cal header::after {
   flex-wrap: wrap;
 }
 
-body.cyber-cal header h1 {
+body.cyber-cal > header h1 {
   margin: 0;
   font-size: 1.35rem;
   font-weight: 700;
@@ -71,7 +71,7 @@ body.cyber-cal header h1 {
   text-shadow: 0 0 20px rgba(0, 153, 221, 0.15);
 }
 
-body.cyber-cal header .subtitle {
+body.cyber-cal > header .subtitle {
   margin: 0.25rem 0 0;
   font-size: 0.88rem;
   color: var(--muted);
@@ -494,13 +494,21 @@ body.cyber-cal .day-cell.past .event-chip.is-full {
   padding: 1.25rem 1rem 1rem;
 }
 
-.lineup-header {
+.modal--lineup .lineup-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.75rem;
   margin-bottom: 0.85rem;
   padding-right: 2rem;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #fff;
+}
+
+.modal--lineup .lineup-header::after {
+  display: none;
 }
 
 .lineup-date-block {
@@ -527,12 +535,13 @@ body.cyber-cal .day-cell.past .event-chip.is-full {
   gap: 0.35rem 0.75rem;
 }
 
-.lineup-date-main {
+.modal--lineup .lineup-date-main {
   font-family: "Rajdhani", "Segoe UI", sans-serif;
   font-size: 2.75rem;
   font-weight: 700;
   line-height: 0.95;
   letter-spacing: -0.02em;
+  color: #fff;
   text-shadow: 0 0 20px rgba(0, 170, 255, 0.35);
 }
 
