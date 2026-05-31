@@ -72,11 +72,25 @@ body.cyber-cal .header-brand {
 
 body.cyber-cal .header-brand-img {
   display: block;
-  height: 3.25rem;
+  height: clamp(3.5rem, 22vw, 4.25rem);
   width: auto;
-  max-width: min(280px, 72vw);
+  max-width: min(340px, 88vw);
   object-fit: contain;
   object-position: left center;
+}
+
+@media (min-width: 600px) {
+  body.cyber-cal .header-brand-img {
+    height: 2.65rem;
+    max-width: 200px;
+  }
+}
+
+@media (min-width: 960px) {
+  body.cyber-cal .header-brand-img {
+    height: 2.35rem;
+    max-width: 168px;
+  }
 }
 
 body.cyber-cal > header h1 {

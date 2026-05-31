@@ -685,10 +685,16 @@
     return '<span class="' + cls + '">' + escapeHtml(value) + "</span>";
   }
 
-  function formatChipPlace(place) {
+  function normalizePlaceName(place) {
     const p = String(place || "").trim();
     if (!p || p === "—") return "—";
-    return p.charAt(0) === "@" ? p : "@" + p;
+    return p.replace(/^@+/, "").trim() || "—";
+  }
+
+  function formatChipPlace(place) {
+    const name = normalizePlaceName(place);
+    if (name === "—") return "—";
+    return "📍 " + name;
   }
 
   function showLoading(show) {
@@ -947,7 +953,7 @@
     $("modalDateDow").textContent = meta.dowJp;
     $("modalTimeSlot").textContent = EVENT_TIME_SLOT;
     const placeEl = $("modalPlace");
-    const placeText = formatChipPlace(place);
+    const placeText = normalizePlaceName(place);
     placeEl.innerHTML =
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
       '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
