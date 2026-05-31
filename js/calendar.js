@@ -691,10 +691,18 @@
     return p.replace(/^@+/, "").trim() || "—";
   }
 
-  function formatChipPlace(place) {
+  function chipPlaceLineHtml(place) {
     const name = normalizePlaceName(place);
-    if (name === "—") return "—";
-    return "📍 " + name;
+    if (name === "—") {
+      return '<span class="chip-line chip-line--place">' + escapeHtml(name) + "</span>";
+    }
+    return (
+      '<span class="chip-line chip-line--place">' +
+      '<span class="chip-pin" aria-hidden="true">📍</span>' +
+      '<span class="chip-place-name">' +
+      escapeHtml(name) +
+      "</span></span>"
+    );
   }
 
   function showLoading(show) {
@@ -908,9 +916,8 @@
     if (avail.isFull) {
       btn.classList.add("is-full");
     }
-    const place = formatChipPlace(ev.place);
     btn.innerHTML =
-      chipLineHtml(place) +
+      chipPlaceLineHtml(ev.place) +
       chipLineHtml(EVENT_TIME_START, "chip-line--time") +
       chipLineHtml(EVENT_TIME_END_LINE, "chip-line--time chip-line--time-end") +
       chipLineHtml(avail.text, "chip-line--count");
