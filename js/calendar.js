@@ -6,6 +6,36 @@
 
   const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
   const RECORD_SHEET_NAME = "record";
+
+  function getGasWebAppUrl() {
+    const meta = document.querySelector('meta[name="gas-web-app-url"]');
+    const url = meta ? String(meta.getAttribute("content") || "").trim() : "";
+    return url;
+  }
+
+  function gasCalendarApiUrl() {
+    const base = getGasWebAppUrl();
+    if (!base) return "";
+    const sep = base.indexOf("?") >= 0 ? "&" : "?";
+    return base + sep + "api=1";
+  }
+
+  function formatUserError(err) {
+    const msg =
+      err && err.message ? String(err.message) : err ? String(err) : "エラーが発生しました。";
+    if (/^load failed$/i.test(msg) || /failed to fetch/i.test(msg)) {
+      if (typeof location !== "undefined" && location.protocol === "file:") {
+        return (
+          "データの取得に失敗しました。index.html を直接開かず、" +
+          "ローカルサーバー（例: npx serve）または GitHub Pages で開いてください。"
+        );
+      }
+      return (
+        "データの取得に失敗しました。ネットワーク接続と GAS ウェブアプリの URL を確認してください。"
+      );
+    }
+    return msg;
+  }
   const MAX_PARTICIPANTS = 15;
   const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
   const BUNDLE_IDB_NAME = "north-pine-viewer";
@@ -50,7 +80,13 @@
   }
 
   async function fetchSheetText(sheetName) {
-    const res = await fetch(csvUrl(sheetName));
+    const url = csvUrl(sheetName);
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (fetchErr) {
+      throw new Error(formatUserError(fetchErr));
+    }
     if (!res.ok) return null;
     const text = await res.text();
     if (!csvLooksValid(text)) return null;
@@ -540,7 +576,60 @@
     return dataRows;
   }
 
+  function applyGasCalendarPayload(data) {
+    STATE.groupByKey = {};
+    const groups = data.groupByKey && typeof data.groupByKey === "object" ? data.groupByKey : {};
+    for (const key of Object.keys(groups)) {
+      STATE.groupByKey[key] = groups[key];
+    }
+    return {
+      range: data.range,
+      sessions: Array.isArray(data.sessions) ? data.sessions : [],
+    };
+  }
+
+  async function loadCalendarDataFromGas(skipCache) {
+    const apiUrl = gasCalendarApiUrl();
+    if (!apiUrl) {
+      throw new Error("GAS ウェブアプリ URL が設定されていません。");
+    }
+
+    const cacheKey = bundleRecordCacheKey() + "_gas_v1";
+    if (!skipCache) {
+      const cached = await readBundleCache(cacheKey);
+      if (cached && cached.ok && cached.range && Array.isArray(cached.sessions)) {
+        return applyGasCalendarPayload(cached);
+      }
+    }
+
+    let res;
+    try {
+      res = await fetch(apiUrl);
+    } catch (fetchErr) {
+      throw new Error(formatUserError(fetchErr));
+    }
+    if (!res.ok) {
+      throw new Error(
+        "カレンダーデータの取得に失敗しました（HTTP " + res.status + "）。GAS のデプロイを確認してください。",
+      );
+    }
+    const data = await res.json();
+    if (!data || data.ok !== true) {
+      throw new Error(
+        (data && data.error) ||
+          "カレンダーデータの取得に失敗しました。GAS を再デプロイしてください。",
+      );
+    }
+
+    await writeBundleCache(cacheKey, data);
+    return applyGasCalendarPayload(data);
+  }
+
   async function loadCalendarData(skipCache) {
+    if (getGasWebAppUrl()) {
+      return loadCalendarDataFromGas(skipCache);
+    }
+
     STATE.groupByKey = {};
     const range = getTwoMonthRange();
     const rows = await fetchRecordRows(skipCache);
@@ -609,6 +698,41 @@
 
   function setModalLoading(show) {
     $("modalLoading").classList.toggle("visible", !!show);
+  }
+
+  function parseLineupDateMeta(dateLabel) {
+    const label = String(dateLabel || "").trim();
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = null;
+    let day = null;
+    let dowJp = "";
+
+    const full = label.match(/^(\d{4})[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})/);
+    if (full) {
+      year = parseInt(full[1], 10);
+      month = parseInt(full[2], 10);
+      day = parseInt(full[3], 10);
+    }
+
+    const jp = label.match(/(\d{1,2})月(\d{1,2})日/);
+    if (jp) {
+      month = parseInt(jp[1], 10);
+      day = parseInt(jp[2], 10);
+    }
+
+    const dowMatch = label.match(/[（(]([日月火水木金土])[）)]/);
+    if (dowMatch) {
+      dowJp = "(" + dowMatch[1] + ")";
+    } else if (month != null && day != null) {
+      const d = new Date(year, month - 1, day);
+      if (!isNaN(d.getTime())) dowJp = "(" + WEEKDAYS[d.getDay()] + ")";
+    }
+
+    const dateMain =
+      month != null && day != null ? month + "/" + day : label || "—";
+
+    return { year: String(year), dateMain: dateMain, dowJp: dowJp };
   }
 
   function updatePeriodLabel(range) {
@@ -801,17 +925,25 @@
   }
 
   function setModalHeader(dateLabel, place, filledCount, maxSlots) {
-    $("modalTitle").textContent = dateLabel || "詳細";
+    const meta = parseLineupDateMeta(dateLabel);
+    $("modalTitle").textContent = dateLabel || "日程詳細";
+    $("modalDateYear").textContent = meta.year;
+    $("modalDateMain").textContent = meta.dateMain;
+    $("modalDateDow").textContent = meta.dowJp;
     $("modalTimeSlot").textContent = EVENT_TIME_SLOT;
     const placeEl = $("modalPlace");
+    const placeText = formatChipPlace(place);
     placeEl.innerHTML =
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
       '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
       "<span>" +
-      escapeHtml(place || "—") +
+      escapeHtml(placeText) +
       "</span>";
     $("modalCount").textContent =
-      "参加者: " + (filledCount != null ? filledCount : "—") + " / " + (maxSlots || MAX_PARTICIPANTS);
+      "ROSTER " +
+      (filledCount != null ? filledCount : "—") +
+      " / " +
+      (maxSlots || MAX_PARTICIPANTS);
   }
 
   function onDetailLoaded(data) {
@@ -820,51 +952,52 @@
     renderParticipantSlots(data.slots || []);
   }
 
+  function appendLineupBadge(parent, text, className, title) {
+    const badge = document.createElement("span");
+    badge.className = "lineup-badge" + (className ? " " + className : "");
+    badge.textContent = text;
+    if (title) badge.setAttribute("title", title);
+    parent.appendChild(badge);
+  }
+
   function renderParticipantSlots(slots) {
     const list = $("participantList");
     list.innerHTML = "";
 
     slots.forEach(function (slot) {
       const li = document.createElement("li");
+      li.className = "lineup-row";
       const display = String(slot.display || "").trim();
       const empty = !display;
 
-      if (empty) li.classList.add("row-empty");
-      if (!empty && slot.isFirst) li.classList.add("row-first");
-      if (!empty && slot.isFemale) li.classList.add("row-female");
-      if (!empty && slot.isUnconfirmed) li.classList.add("row-unconfirmed");
+      if (empty) li.classList.add("lineup-row--empty");
+      if (!empty && slot.isFirst) li.classList.add("lineup-row--first");
+      if (!empty && slot.isFemale) li.classList.add("lineup-row--female");
+      if (!empty && slot.isUnconfirmed) li.classList.add("lineup-row--unconfirmed");
 
-      const numEl = document.createElement("span");
-      numEl.className = "participant-num";
-      numEl.textContent = String(slot.seq || "");
-      li.appendChild(numEl);
+      const orderEl = document.createElement("span");
+      orderEl.className = "lineup-order";
+      orderEl.textContent = String(slot.seq || "");
+      li.appendChild(orderEl);
+
+      const badgesEl = document.createElement("span");
+      badgesEl.className = "lineup-badges";
+      if (empty) {
+        appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+      } else {
+        if (slot.isFirst) appendLineupBadge(badgesEl, "初", "lineup-badge--first", "初参加");
+        if (slot.isFemale) appendLineupBadge(badgesEl, "女", "lineup-badge--female", "女性");
+        if (slot.isUnconfirmed) appendLineupBadge(badgesEl, "未", "lineup-badge--pending", "未確定");
+        if (!slot.isFirst && !slot.isFemale && !slot.isUnconfirmed) {
+          appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+        }
+      }
+      li.appendChild(badgesEl);
 
       const nameEl = document.createElement("span");
-      nameEl.className = "participant-name";
-      if (!empty && slot.isFemale) {
-        nameEl.classList.add("participant-name--female");
-      }
-      if (empty) {
-        nameEl.innerHTML = '<span class="participant-empty-dash">—</span>';
-      } else {
-        nameEl.textContent = display;
-      }
+      nameEl.className = "lineup-name";
+      nameEl.textContent = empty ? "—" : display;
       li.appendChild(nameEl);
-
-      if (!empty && (slot.isFirst || slot.isFemale || slot.isUnconfirmed)) {
-        const tagsEl = document.createElement("span");
-        tagsEl.className = "participant-tags";
-        if (slot.isFirst) {
-          tagsEl.appendChild(createParticipantTag("初", "tag-first", "初参加"));
-        }
-        if (slot.isFemale) {
-          tagsEl.appendChild(createParticipantTag("女", "tag-female", "女性"));
-        }
-        if (slot.isUnconfirmed) {
-          tagsEl.appendChild(createParticipantTag("未", "tag-pending", "未確定"));
-        }
-        li.appendChild(tagsEl);
-      }
 
       list.appendChild(li);
     });
@@ -881,12 +1014,7 @@
     showLoading(false);
     const area = $("errorArea");
     area.className = "error-banner";
-    let msg =
-      err && err.message
-        ? String(err.message)
-        : err
-          ? String(err)
-          : "エラーが発生しました。";
+    let msg = formatUserError(err);
     if (msg === "undefined" || msg.indexOf("undefined") >= 0) {
       msg =
         "データの取得に失敗しました。スプレッドシートの公開設定と record シートを確認してください。";
@@ -899,14 +1027,6 @@
   function onModalError(err) {
     $("modalFormMessage").textContent =
       err && err.message ? String(err.message) : String(err);
-  }
-
-  function createParticipantTag(text, className, title) {
-    const tag = document.createElement("span");
-    tag.className = "tag " + className;
-    tag.textContent = text;
-    tag.setAttribute("title", title);
-    return tag;
   }
 
   async function bootstrap(skipCache) {

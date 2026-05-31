@@ -11,7 +11,17 @@
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="NORTH PINE カレンダー" />
   <meta name="twitter:description" content="練習日程と参加者状況を確認できます" />
+  <meta
+    name="gas-web-app-url"
+    content="https://script.google.com/macros/s/AKfycbxbgdkzodm824U8bppBN4o-Ib5EcyTEOfye41vb_6ev3h-pFlvjCyJvcR-JhOZosiqz/exec"
+  />
   <link rel="stylesheet" href="calendar.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@600;700&display=swap"
+    rel="stylesheet"
+  />
 </head>
 <body>
   <header>
@@ -54,28 +64,34 @@
   </main>
 
   <div id="modalOverlay" class="modal-overlay" aria-hidden="true">
-    <div class="modal" role="dialog" aria-labelledby="modalTitle">
-      <div id="modalLoading" class="modal-loading" role="status" aria-live="polite">
-        <div class="loading-spinner" aria-hidden="true"></div>
+    <div class="modal modal--lineup" role="dialog" aria-labelledby="modalTitle">
+      <div id="modalLoading" class="modal-loading modal-loading--lineup" role="status" aria-live="polite">
+        <div class="loading-spinner loading-spinner--lineup" aria-hidden="true"></div>
         <span>読み込み中…</span>
       </div>
-      <div class="modal-header">
-        <div class="modal-header-top">
-          <div>
-            <div class="modal-title-row">
-              <h2 id="modalTitle">詳細</h2>
-              <span id="modalTimeSlot" class="modal-time-slot"></span>
+      <button type="button" class="lineup-close" id="closeModalBtn" aria-label="閉じる">&times;</button>
+      <div class="lineup-scene">
+        <header class="lineup-header">
+          <div class="lineup-header-main">
+            <div class="lineup-date-block" aria-labelledby="modalTitle">
+              <span id="modalDateYear" class="lineup-year"></span>
+              <div class="lineup-date-line">
+                <span id="modalDateMain" class="lineup-date-main"></span>
+                <span id="modalDateDow" class="lineup-date-dow"></span>
+                <span id="modalTimeSlot" class="lineup-time-slot"></span>
+              </div>
+              <h2 id="modalTitle" class="visually-hidden">日程詳細</h2>
             </div>
-            <div id="modalPlace" class="modal-place"></div>
+            <div id="modalPlace" class="lineup-venue"></div>
           </div>
-          <button type="button" class="close-btn" id="closeModalBtn" aria-label="閉じる">&times;</button>
+          <p class="lineup-brand" aria-hidden="true">NORTH PINE</p>
+        </header>
+        <div class="lineup-frame">
+          <div class="lineup-watermark" aria-hidden="true">NP</div>
+          <ul id="participantList" class="lineup-table"></ul>
         </div>
-        <p id="modalCount" class="modal-count"></p>
-      </div>
-      <div class="modal-body">
-        <h3 class="section-label">参加者一覧</h3>
-        <ul id="participantList" class="participant-list"></ul>
-        <p id="modalFormMessage" class="form-message"></p>
+        <p id="modalCount" class="lineup-count"></p>
+        <p id="modalFormMessage" class="lineup-form-message"></p>
       </div>
     </div>
   </div>
