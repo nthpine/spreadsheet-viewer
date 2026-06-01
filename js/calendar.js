@@ -1126,20 +1126,41 @@
     });
 
     const btnRefresh = $("btnRefresh");
+
+    if (window.__MOCK_CALENDAR__) {
+      var mock = window.__MOCK_CALENDAR__;
+      var mockLoadDelayMs = 1200;
+
+      async function loadMockCalendar() {
+        if (btnRefresh) btnRefresh.disabled = true;
+        showLoading(true);
+        setStatus("loading", "読み込み中…");
+        $("errorArea").innerHTML = "";
+        $("errorArea").className = "";
+        await new Promise(function (resolve) {
+          setTimeout(resolve, mockLoadDelayMs);
+        });
+        if (mock.groupByKey && typeof mock.groupByKey === "object") {
+          STATE.groupByKey = mock.groupByKey;
+        }
+        onCalendarLoaded(mock);
+        if (btnRefresh) btnRefresh.disabled = false;
+      }
+
+      if (btnRefresh) {
+        btnRefresh.addEventListener("click", function () {
+          loadMockCalendar();
+        });
+      }
+      loadMockCalendar();
+      return;
+    }
+
     if (btnRefresh) {
       btnRefresh.addEventListener("click", async function () {
         await clearBundleCache();
         await bootstrap(true);
       });
-    }
-
-    if (window.__MOCK_CALENDAR__) {
-      var mock = window.__MOCK_CALENDAR__;
-      if (mock.groupByKey && typeof mock.groupByKey === "object") {
-        STATE.groupByKey = mock.groupByKey;
-      }
-      onCalendarLoaded(mock);
-      return;
     }
 
     bootstrap(false);
