@@ -260,57 +260,85 @@ body.cyber-cal .loading-panel > * {
   z-index: 1;
 }
 
-body.cyber-cal .loading-snowflakes {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.1rem;
-  height: 2.25rem;
-  color: rgba(0, 153, 221, 0.55);
+body.cyber-cal .loading-dogs {
+  position: relative;
+  width: 6rem;
+  height: 6rem;
 }
 
-body.cyber-cal .loading-snowflakes__flake {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.4;
-  animation: loading-snow-drift 2.4s ease-in-out infinite;
+body.cyber-cal .loading-dogs__track {
+  position: absolute;
+  inset: 0.2rem;
+  border: 2px dashed rgba(107, 114, 128, 0.38);
+  border-radius: 50%;
 }
 
-body.cyber-cal .loading-snowflakes__flake--lg {
-  color: rgba(0, 153, 221, 0.7);
-  animation-duration: 2.8s;
+body.cyber-cal .loading-dogs__orbit {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: loading-dogs-orbit 2.75s linear infinite;
 }
 
-body.cyber-cal .loading-snowflakes__flake--sm {
-  animation-duration: 2.1s;
+body.cyber-cal .loading-dogs__marker {
+  position: absolute;
+  left: 50%;
+  top: -0.55rem;
+  width: 3.25rem;
+  height: 2.4rem;
+  margin-left: -1.625rem;
+  animation: loading-dogs-upright 2.75s linear infinite;
 }
 
-body.cyber-cal .loading-snowflakes__flake:nth-child(1) {
-  animation-delay: 0s;
+body.cyber-cal .loading-dogs__marker--black {
+  top: auto;
+  bottom: -0.45rem;
 }
 
-body.cyber-cal .loading-snowflakes__flake:nth-child(2) {
-  animation-delay: 0.35s;
-}
-
-body.cyber-cal .loading-snowflakes__flake:nth-child(3) {
-  animation-delay: 0.7s;
-}
-
-body.cyber-cal .loading-snowflakes__flake svg {
+body.cyber-cal .loading-dogs__sprite {
   display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scaleX(-1);
 }
 
-@keyframes loading-snow-drift {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-    opacity: 0.35;
+body.cyber-cal .loading-dogs__marker--white .loading-dogs__sprite {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.14));
+}
+
+body.cyber-cal .loading-dogs__marker--black .loading-dogs__sprite {
+  filter: brightness(0) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+body.cyber-cal .loading-dogs__eye-dot {
+  position: absolute;
+  left: 72%;
+  top: 28%;
+  width: 0.1rem;
+  height: 0.08rem;
+  margin: -0.04rem 0 0 -0.04rem;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+body.cyber-cal .loading-dogs__marker--white .loading-dogs__eye-dot {
+  background: #111111;
+}
+
+body.cyber-cal .loading-dogs__marker--black .loading-dogs__eye-dot {
+  background: #ffffff;
+}
+
+@keyframes loading-dogs-orbit {
+  to {
+    transform: rotate(360deg);
   }
-  50% {
-    transform: translateY(0.45rem) rotate(18deg);
-    opacity: 0.9;
+}
+
+@keyframes loading-dogs-upright {
+  to {
+    transform: rotate(-360deg);
   }
 }
 
