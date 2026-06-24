@@ -788,3 +788,242 @@ footer {
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+/* --- 参加案内（カレンダー下部・パネル） --- */
+
+body.cyber-cal .club-info-panel {
+  margin-top: 2rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+body.cyber-cal .club-info-panel__head {
+  padding: 1.25rem 1.25rem 1rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+body.cyber-cal .club-info-panel__title {
+  margin: 0 0 0.75rem;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #0c4a6e;
+  text-align: center;
+}
+
+body.cyber-cal .club-info-panel__lead {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text);
+  background: #f0f9ff;
+  border: 1px solid rgba(0, 153, 221, 0.2);
+  border-radius: 6px;
+}
+
+body.cyber-cal .club-info-panel__lead a {
+  color: var(--primary-dark);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+body.cyber-cal .club-info-panel__body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+body.cyber-cal .club-info-section__title {
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #0c4a6e;
+  border-bottom: 2px solid rgba(0, 153, 221, 0.25);
+}
+
+body.cyber-cal .club-info-section__intro {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: #374151;
+}
+
+body.cyber-cal .club-info-cards {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 600px) {
+  body.cyber-cal .club-info-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+body.cyber-cal .club-info-card {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+body.cyber-cal .club-info-card__label {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary-dark);
+}
+
+body.cyber-cal .club-info-card__text {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+body.cyber-cal .club-info-card--full {
+  grid-column: 1 / -1;
+}
+
+body.cyber-cal .club-info-card__details {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+body.cyber-cal .club-info-card__detail-row {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr;
+  gap: 0.5rem 0.75rem;
+  align-items: baseline;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+body.cyber-cal .club-info-card__detail-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+body.cyber-cal .club-info-card__detail-row dt {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--primary-dark);
+}
+
+body.cyber-cal .club-info-card__detail-row dd {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+body.cyber-cal .club-info-notice-panel {
+  padding: 1rem 1rem 1rem 0.5rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+}
+
+body.cyber-cal .club-info-notice-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: #422006;
+}
+
+body.cyber-cal .club-info-notice-list li {
+  position: relative;
+  padding-left: 1.35rem;
+}
+
+body.cyber-cal .club-info-notice-list li + li {
+  margin-top: 0.55rem;
+}
+
+body.cyber-cal .club-info-notice-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d97706;
+}
+
+body.cyber-cal .club-info-flow-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f0f9ff;
+  border: 1px solid rgba(0, 153, 221, 0.2);
+  border-radius: 6px;
+}
+
+body.cyber-cal .club-info-flow-panel__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+body.cyber-cal .club-info-flow-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+body.cyber-cal .club-info-flow-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: baseline;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--text);
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 153, 221, 0.15);
+}
+
+body.cyber-cal .club-info-flow-list__time {
+  flex-shrink: 0;
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--primary-dark);
+}
+
+body.cyber-cal .club-info-section__note {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--muted);
+  background: #f3f4f6;
+  border-radius: 6px;
+}
