@@ -37,7 +37,7 @@ body.cyber-cal {
 body.cyber-cal > header {
   background: linear-gradient(165deg, #7b8494 0%, #6b7280 45%, #5c6573 100%);
   color: #f3f4f6;
-  padding: 1rem 1.25rem;
+  padding: 0.5rem 1.25rem 0.65rem;
   box-shadow: var(--shadow);
   border-bottom: 1px solid #4b5563;
   position: relative;
@@ -70,20 +70,34 @@ body.cyber-cal .header-brand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.1rem;
   min-width: 0;
   flex: 1;
   text-align: center;
 }
 
+body.cyber-cal .header-brand-logo {
+  --logo-box-h: clamp(4.75rem, 22vw, 6.75rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: min(480px, 96vw);
+  height: var(--logo-box-h);
+  margin-inline: auto;
+  overflow: hidden;
+  line-height: 0;
+}
+
 body.cyber-cal .header-brand-img {
   display: block;
-  height: clamp(3.5rem, 22vw, 4.25rem);
   width: auto;
-  max-width: min(340px, 88vw);
-  margin-inline: auto;
+  height: 100%;
+  max-width: none;
   object-fit: contain;
   object-position: center center;
+  transform: scale(1.85);
+  transform-origin: center center;
 }
 
 body.cyber-cal > header .subtitle {
@@ -92,16 +106,24 @@ body.cyber-cal > header .subtitle {
 }
 
 @media (min-width: 600px) {
+  body.cyber-cal .header-brand-logo {
+    --logo-box-h: 6.25rem;
+    max-width: 520px;
+  }
+
   body.cyber-cal .header-brand-img {
-    height: 2.65rem;
-    max-width: 200px;
+    transform: scale(1.9);
   }
 }
 
 @media (min-width: 960px) {
+  body.cyber-cal .header-brand-logo {
+    --logo-box-h: 6.75rem;
+    max-width: 560px;
+  }
+
   body.cyber-cal .header-brand-img {
-    height: 2.35rem;
-    max-width: 168px;
+    transform: scale(2);
   }
 }
 
@@ -115,7 +137,7 @@ body.cyber-cal > header h1 {
 }
 
 body.cyber-cal > header .subtitle {
-  margin: 0.25rem 0 0;
+  margin: 0.1rem 0 0;
   font-size: 0.88rem;
   color: rgba(243, 244, 246, 0.88);
   font-family: "Orbitron", "Segoe UI", sans-serif;
@@ -834,6 +856,11 @@ body.cyber-cal .club-info-panel__lead a {
   text-underline-offset: 2px;
 }
 
+body.cyber-cal .club-info-panel__lead strong {
+  color: #0c4a6e;
+  font-weight: 700;
+}
+
 body.cyber-cal .club-info-panel__body {
   padding: 1.25rem;
   display: flex;
@@ -1026,4 +1053,219 @@ body.cyber-cal .club-info-section__note {
   color: var(--muted);
   background: #f3f4f6;
   border-radius: 6px;
+}
+
+body.cyber-cal .club-info-team-example {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+body.cyber-cal .club-info-team-example__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+body.cyber-cal .club-info-team-example__intro,
+body.cyber-cal .club-info-team-example__summary {
+  margin: 0 0 0.85rem;
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+body.cyber-cal .club-info-team-example__summary {
+  margin-bottom: 0;
+  padding: 0.65rem 0.75rem;
+  background: #e0f2fe;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #0c4a6e;
+}
+
+body.cyber-cal .club-info-team-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+body.cyber-cal .club-info-team-round {
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+body.cyber-cal .club-info-team-round__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #0c4a6e;
+}
+
+body.cyber-cal .club-info-team-round__note {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+body.cyber-cal .club-info-team-round__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+body.cyber-cal .club-info-team-round__list li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+body.cyber-cal .club-info-bib-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+
+body.cyber-cal .club-info-bib-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 0.4rem;
+  background: linear-gradient(180deg, #fff 0%, #f1f5f9 100%);
+  border: 1.5px solid #cbd5e1;
+  border-radius: 999px;
+  font-family: "Orbitron", "Rajdhani", sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+}
+
+body.cyber-cal .club-info-team-tag,
+body.cyber-cal .club-info-team-tag--a,
+body.cyber-cal .club-info-team-tag--b,
+body.cyber-cal .club-info-team-tag--c {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: #facc15;
+  color: #713f12;
+  border: 1px solid #eab308;
+  box-shadow: 0 1px 2px rgba(113, 63, 18, 0.15);
+}
+
+body.cyber-cal .club-info-match-order {
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+body.cyber-cal .club-info-match-order__title {
+  margin: 0 0 0.75rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #0c4a6e;
+  text-align: center;
+}
+
+body.cyber-cal .club-info-match-order__diagram {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.5rem;
+}
+
+body.cyber-cal .club-info-match-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  min-width: 5.5rem;
+}
+
+body.cyber-cal .club-info-match-card__order {
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #92400e;
+  letter-spacing: 0.04em;
+}
+
+body.cyber-cal .club-info-match-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+body.cyber-cal .club-info-match-pair .club-info-team-tag {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+body.cyber-cal .club-info-match-pair .club-info-team-tag--pink {
+  background: #fbcfe8;
+  color: #9d174d;
+  border-color: #f472b6;
+  box-shadow: 0 1px 2px rgba(157, 23, 77, 0.12);
+}
+
+body.cyber-cal .club-info-match-pair .club-info-team-tag--sky {
+  background: #bae6fd;
+  color: #075985;
+  border-color: #38bdf8;
+  box-shadow: 0 1px 2px rgba(7, 89, 133, 0.12);
+}
+
+body.cyber-cal .club-info-match-vs {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+body.cyber-cal .club-info-match-connector {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #d97706;
+  line-height: 1;
+}
+
+@media (max-width: 420px) {
+  body.cyber-cal .club-info-match-order__diagram {
+    flex-direction: column;
+  }
+
+  body.cyber-cal .club-info-match-connector {
+    transform: rotate(90deg);
+  }
 }

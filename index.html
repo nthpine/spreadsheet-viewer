@@ -28,14 +28,16 @@
   <header>
     <div class="header-top">
       <div class="header-brand">
-        <img
-          class="header-brand-img"
-          src="NORTHPINE_背景なし.png"
-          alt="NORTH PINE"
-          width="512"
-          height="512"
-          decoding="async"
-        />
+        <div class="header-brand-logo">
+          <img
+            class="header-brand-img"
+            src="NORTHPINE_背景なし.png"
+            alt="NORTH PINE"
+            width="512"
+            height="512"
+            decoding="async"
+          />
+        </div>
         <h1 class="visually-hidden">NORTH PINE カレンダー</h1>
         <p id="periodLabel" class="subtitle">読み込み中…</p>
       </div>
@@ -76,7 +78,7 @@
       <header class="club-info-panel__head">
         <h2 id="clubInfoHeading" class="club-info-panel__title">参加について</h2>
         <p class="club-info-panel__lead">
-          参加希望の方は、詳細を記入の上
+          参加希望の方は、<strong>年齢・バスケ歴・性別</strong>を記入の上
           <a href="https://www.instagram.com/sapporo_northpine" target="_blank" rel="noopener noreferrer">Instagram（@sapporo_northpine）</a>
           のDMまたはメッセージにてご連絡ください。当日キャンセルが出た場合はストーリーにて募集しています。
         </p>
@@ -100,7 +102,7 @@
             </article>
             <article class="club-info-card">
               <h4 class="club-info-card__label">人数・試合</h4>
-              <p class="club-info-card__text">12〜15人で3チームに分割（3試合ごとに再編成）。3チーム総当たりで6試合（場合により9試合）。</p>
+              <p class="club-info-card__text">12〜15人。3チーム・計3巡・合計9試合（1人あたり6試合）。</p>
             </article>
             <article class="club-info-card">
               <h4 class="club-info-card__label">レベル</h4>
@@ -123,7 +125,7 @@
                 </div>
                 <div class="club-info-card__detail-row">
                   <dt>場所</dt>
-                  <dd>札幌市東区・豊平区の学校体育館</dd>
+                  <dd>札幌市東区・豊平区・北区の学校体育館</dd>
                 </div>
                 <div class="club-info-card__detail-row">
                   <dt>備考</dt>
@@ -152,9 +154,128 @@
             <h4 class="club-info-flow-panel__title">当日の流れ</h4>
             <ol class="club-info-flow-list">
               <li><span class="club-info-flow-list__time">19:15〜</span>試合までフリー</li>
-              <li><span class="club-info-flow-list__time">19:45〜</span>説明・試合開始（3チーム総当たり、計9試合／3巡。同じメンバーが3連続で同チームにならないよう調整）</li>
+              <li><span class="club-info-flow-list__time">19:50〜</span>説明・チーム編成・試合開始</li>
               <li><span class="club-info-flow-list__time">21:30〜</span>試合終了・片付け・解散</li>
             </ol>
+          </div>
+
+          <div class="club-info-team-example">
+            <h4 class="club-info-team-example__title">チーム編成の例（15人時・背番号1〜15）</h4>
+            <p class="club-info-team-example__intro">
+              参加は12〜15人です。ビブスを配布し、ビブスに書かれた背番号で振り分けます。
+              以下は人数が最大の15人時の例で、バランスを見てA・B・Cの3チーム（各5人）に分け、
+              できるだけ同じメンバーにならないよう組み替えながら、計3巡プレーします。
+              2巡目・3巡目のA・B・Cは、それぞれ1巡目とは別のメンバー構成になります。
+            </p>
+
+            <div class="club-info-match-order">
+              <h5 class="club-info-match-order__title">試合の順番（各巡ともこの順で実施）</h5>
+              <div class="club-info-match-order__diagram" role="img" aria-label="試合順：1試合目A対B、2試合目B対C、3試合目C対A">
+                <div class="club-info-match-card">
+                  <span class="club-info-match-card__order">1</span>
+                  <div class="club-info-match-pair">
+                    <span class="club-info-team-tag club-info-team-tag--pink">A</span>
+                    <span class="club-info-match-vs">-</span>
+                    <span class="club-info-team-tag club-info-team-tag--sky">B</span>
+                  </div>
+                </div>
+                <span class="club-info-match-connector" aria-hidden="true">→</span>
+                <div class="club-info-match-card">
+                  <span class="club-info-match-card__order">2</span>
+                  <div class="club-info-match-pair">
+                    <span class="club-info-team-tag club-info-team-tag--sky">B</span>
+                    <span class="club-info-match-vs">-</span>
+                    <span class="club-info-team-tag club-info-team-tag--pink">C</span>
+                  </div>
+                </div>
+                <span class="club-info-match-connector" aria-hidden="true">→</span>
+                <div class="club-info-match-card">
+                  <span class="club-info-match-card__order">3</span>
+                  <div class="club-info-match-pair">
+                    <span class="club-info-team-tag club-info-team-tag--pink">C</span>
+                    <span class="club-info-match-vs">-</span>
+                    <span class="club-info-team-tag club-info-team-tag--sky">A</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="club-info-team-rounds">
+              <article class="club-info-team-round">
+                <h5 class="club-info-team-round__label">1巡目</h5>
+                <ul class="club-info-team-round__list">
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--a">A</span>
+                    <div class="club-info-bib-chips" aria-label="Aチームの背番号">
+                      <span class="club-info-bib-chip">1</span><span class="club-info-bib-chip">4</span><span class="club-info-bib-chip">7</span><span class="club-info-bib-chip">10</span><span class="club-info-bib-chip">13</span>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--b">B</span>
+                    <div class="club-info-bib-chips" aria-label="Bチームの背番号">
+                      <span class="club-info-bib-chip">2</span><span class="club-info-bib-chip">5</span><span class="club-info-bib-chip">8</span><span class="club-info-bib-chip">11</span><span class="club-info-bib-chip">14</span>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--c">C</span>
+                    <div class="club-info-bib-chips" aria-label="Cチームの背番号">
+                      <span class="club-info-bib-chip">3</span><span class="club-info-bib-chip">6</span><span class="club-info-bib-chip">9</span><span class="club-info-bib-chip">12</span><span class="club-info-bib-chip">15</span>
+                    </div>
+                  </li>
+                </ul>
+              </article>
+              <article class="club-info-team-round">
+                <h5 class="club-info-team-round__label">2巡目</h5>
+                <p class="club-info-team-round__note">1巡目とは別のメンバーでA・B・Cを再編成</p>
+                <ul class="club-info-team-round__list">
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--a">A</span>
+                    <div class="club-info-bib-chips" aria-label="Aチームの背番号">
+                      <span class="club-info-bib-chip">2</span><span class="club-info-bib-chip">6</span><span class="club-info-bib-chip">9</span><span class="club-info-bib-chip">12</span><span class="club-info-bib-chip">15</span>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--b">B</span>
+                    <div class="club-info-bib-chips" aria-label="Bチームの背番号">
+                      <span class="club-info-bib-chip">1</span><span class="club-info-bib-chip">5</span><span class="club-info-bib-chip">8</span><span class="club-info-bib-chip">11</span><span class="club-info-bib-chip">14</span>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--c">C</span>
+                    <div class="club-info-bib-chips" aria-label="Cチームの背番号">
+                      <span class="club-info-bib-chip">3</span><span class="club-info-bib-chip">4</span><span class="club-info-bib-chip">7</span><span class="club-info-bib-chip">10</span><span class="club-info-bib-chip">13</span>
+                    </div>
+                  </li>
+                </ul>
+              </article>
+              <article class="club-info-team-round">
+                <h5 class="club-info-team-round__label">3巡目</h5>
+                <p class="club-info-team-round__note">さらに別のメンバーでA・B・Cを再編成</p>
+                <ul class="club-info-team-round__list">
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--a">A</span>
+                    <div class="club-info-bib-chips" aria-label="Aチームの背番号">
+                      <span class="club-info-bib-chip">3</span><span class="club-info-bib-chip">5</span><span class="club-info-bib-chip">8</span><span class="club-info-bib-chip">10</span><span class="club-info-bib-chip">14</span>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--b">B</span>
+                    <div class="club-info-bib-chips" aria-label="Bチームの背番号">
+                      <span class="club-info-bib-chip">2</span><span class="club-info-bib-chip">4</span><span class="club-info-bib-chip">9</span><span class="club-info-bib-chip">13</span><span class="club-info-bib-chip">15</span>
+                    </div>
+                  </li>
+                  <li>
+                    <span class="club-info-team-tag club-info-team-tag--c">C</span>
+                    <div class="club-info-bib-chips" aria-label="Cチームの背番号">
+                      <span class="club-info-bib-chip">1</span><span class="club-info-bib-chip">6</span><span class="club-info-bib-chip">7</span><span class="club-info-bib-chip">11</span><span class="club-info-bib-chip">12</span>
+                    </div>
+                  </li>
+                </ul>
+              </article>
+            </div>
+            <p class="club-info-team-example__summary">
+              各巡で上記の順に3試合（A-B → B-C → C-A）を行い、3巡で合計9試合。お一人あたり6試合出場します。
+            </p>
           </div>
 
           <p class="club-info-section__note">
