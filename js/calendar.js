@@ -608,12 +608,74 @@
     STATE.groupByKey = {};
     const groups = data.groupByKey && typeof data.groupByKey === "object" ? data.groupByKey : {};
     for (const key of Object.keys(groups)) {
-      STATE.groupByKey[key] = groups[key];
+      STATE.groupByKey[key] = normalizeEnrichedGroup(groups[key], key);
     }
+    const sessions = Array.isArray(data.sessions) ? data.sessions : [];
     return {
       range: data.range,
-      sessions: Array.isArray(data.sessions) ? data.sessions : [],
+      sessions: sessions.map(function (session) {
+        const group = STATE.groupByKey[session.sessionKey];
+        if (!group) return session;
+        return Object.assign({}, session, {
+          sessionType: group.sessionType,
+          maxSlots: group.maxSlots,
+          filledCount: group.filledCount,
+        });
+      }),
     };
+  }
+
+  function normalizeEnrichedGroup(group, sessionKey) {
+    if (!group || typeof group !== "object") return group;
+    const slots = Array.isArray(group.slots) ? group.slots : [];
+    const sessionType = group.sessionType === "team" ? "team" : "individual";
+    const maxSlots = group.maxSlots || (sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
+    const filledCount =
+      group.filledCount != null
+        ? group.filledCount
+        : countFilledSlotsForSession(slots, sessionType);
+    return Object.assign({}, group, {
+      sessionKey: group.sessionKey || sessionKey,
+      sessionType: sessionType,
+      maxSlots: maxSlots,
+      filledCount: filledCount,
+      slots: slots,
+    });
+  }
+
+  async function repairGasPayloadMetadata(data) {
+    if (!data || !data.groupByKey) return data;
+
+    const needsRepair = Object.keys(data.groupByKey).some(function (key) {
+      return !data.groupByKey[key].sessionType;
+    });
+    if (!needsRepair) return data;
+
+    try {
+      const rows = await fetchRecordRows(true);
+      const built = buildSessionGroupsFromRows(rows);
+      Object.keys(data.groupByKey).forEach(function (key) {
+        const source = built[key];
+        if (!source) return;
+        const sessionType = detectSessionType(source.bySeq);
+        const group = data.groupByKey[key];
+        group.sessionType = sessionType;
+        group.maxSlots = sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS;
+        group.filledCount = countFilledSlotsForSession(group.slots || [], sessionType);
+      });
+      if (Array.isArray(data.sessions)) {
+        data.sessions.forEach(function (session) {
+          const group = data.groupByKey[session.sessionKey];
+          if (!group) return;
+          session.sessionType = group.sessionType;
+          session.maxSlots = group.maxSlots;
+          session.filledCount = group.filledCount;
+        });
+      }
+    } catch (_) {
+      // record CSV が取れない場合は slots ベースの normalize に任せる
+    }
+    return data;
   }
 
   async function loadCalendarDataFromGas(skipCache) {
@@ -622,7 +684,7 @@
       throw new Error("GAS ウェブアプリ URL が設定されていません。");
     }
 
-    const cacheKey = bundleRecordCacheKey() + "_gas_v1";
+    const cacheKey = bundleRecordCacheKey() + "_gas_v2";
     if (!skipCache) {
       const cached = await readBundleCache(cacheKey);
       if (cached && cached.ok && cached.range && Array.isArray(cached.sessions)) {
@@ -649,8 +711,9 @@
       );
     }
 
-    await writeBundleCache(cacheKey, data);
-    return applyGasCalendarPayload(data);
+    const repaired = await repairGasPayloadMetadata(data);
+    await writeBundleCache(cacheKey, repaired);
+    return applyGasCalendarPayload(repaired);
   }
 
   async function loadCalendarData(skipCache) {
