@@ -1129,6 +1129,10 @@
     if (list) {
       list.classList.toggle("lineup-table--team", isTeam);
     }
+    const modal = document.querySelector("#modalOverlay .modal--lineup");
+    if (modal) {
+      modal.classList.toggle("modal--lineup-team", isTeam);
+    }
   }
 
   function onDetailLoaded(data) {
@@ -1211,6 +1215,8 @@
     setModalLoading(false);
     $("modalOverlay").classList.remove("open");
     $("modalOverlay").setAttribute("aria-hidden", "true");
+    const modal = document.querySelector("#modalOverlay .modal--lineup");
+    if (modal) modal.classList.remove("modal--lineup-team");
     STATE.currentSessionKey = null;
   }
 
