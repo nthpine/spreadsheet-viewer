@@ -37,6 +37,8 @@
     return msg;
   }
   const MAX_PARTICIPANTS = 15;
+  const MAX_TEAM_SLOTS = 3;
+  const TEAM_SLOT_LABELS = ["チームA", "チームB", "チームC"];
   const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
   const BUNDLE_IDB_NAME = "north-pine-viewer";
   const BUNDLE_IDB_STORE = "gasBundle";
@@ -366,6 +368,39 @@
     return n;
   }
 
+  function detectSessionType(bySeq) {
+    for (let i = 3; i < MAX_PARTICIPANTS; i++) {
+      if (bySeq[i]) return "individual";
+    }
+    return "team";
+  }
+
+  function countFilledSlotsForSession(slots, sessionType) {
+    const limit = sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS;
+    let n = 0;
+    for (let i = 0; i < limit; i++) {
+      if (slots[i] && normalizeParticipantDisplay(slots[i].display)) n++;
+    }
+    return n;
+  }
+
+  function sessionSummaryFromEnriched(enriched) {
+    return {
+      sessionKey: enriched.sessionKey,
+      dateLabel: enriched.dateLabel,
+      place: enriched.place,
+      year: enriched.year,
+      month: enriched.month,
+      day: enriched.day,
+      dateIso: enriched.dateIso,
+      filledCount: enriched.filledCount,
+      maxSlots: enriched.maxSlots,
+      sessionType: enriched.sessionType,
+      hasFirst: enriched.hasFirst,
+      hasUnconfirmed: enriched.hasUnconfirmed,
+    };
+  }
+
   function stripTime(d) {
     return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   }
@@ -474,8 +509,10 @@
   }
 
   function enrichSessionGroup(group, eventDate) {
+    const sessionType = detectSessionType(group.bySeq);
     const slots = groupsToSlotsArray(group.bySeq);
-    const filledCount = countFilledSlots(slots);
+    const filledCount = countFilledSlotsForSession(slots, sessionType);
+    const maxSlots = sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS;
     let hasFirst = false;
     let hasUnconfirmed = false;
 
@@ -495,7 +532,8 @@
       day: eventDate.getDate(),
       dateIso: formatDateIso(eventDate),
       filledCount: filledCount,
-      maxSlots: MAX_PARTICIPANTS,
+      maxSlots: maxSlots,
+      sessionType: sessionType,
       hasFirst: hasFirst,
       hasUnconfirmed: hasUnconfirmed,
       slots: slots,
@@ -511,19 +549,7 @@
       if (!eventDate) continue;
       const enriched = enrichSessionGroup(group, eventDate);
       STATE.groupByKey[key] = enriched;
-      out.push({
-        sessionKey: enriched.sessionKey,
-        dateLabel: enriched.dateLabel,
-        place: enriched.place,
-        year: enriched.year,
-        month: enriched.month,
-        day: enriched.day,
-        dateIso: enriched.dateIso,
-        filledCount: enriched.filledCount,
-        maxSlots: enriched.maxSlots,
-        hasFirst: enriched.hasFirst,
-        hasUnconfirmed: enriched.hasUnconfirmed,
-      });
+      out.push(sessionSummaryFromEnriched(enriched));
     }
 
     out.sort((a, b) => {
@@ -547,7 +573,9 @@
       session: {
         dateLabel: group.dateLabel,
         place: group.place,
-        filledCount: countFilledSlots(group.slots),
+        filledCount: group.filledCount,
+        maxSlots: group.maxSlots,
+        sessionType: group.sessionType,
         sessionKey: group.sessionKey,
       },
       slots: group.slots,
@@ -946,11 +974,15 @@
   }
 
   function formatChipAvailability(ev) {
-    const max = ev.maxSlots || MAX_PARTICIPANTS;
+    const sessionType = ev.sessionType || "individual";
+    const max = ev.maxSlots || (sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
     const filled = ev.filledCount || 0;
     const remaining = max - filled;
     if (remaining <= 0) {
-      return { text: "満員", isFull: true };
+      return { text: sessionType === "team" ? "満員" : "満員", isFull: true };
+    }
+    if (sessionType === "team") {
+      return { text: "残" + remaining + "チーム", isFull: false };
     }
     return { text: "残" + remaining + "名", isFull: false };
   }
@@ -959,6 +991,9 @@
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "event-chip";
+    if (ev.sessionType === "team") {
+      btn.classList.add("event-chip--team");
+    }
     const avail = formatChipAvailability(ev);
     if (avail.isFull) {
       btn.classList.add("is-full");
@@ -982,7 +1017,13 @@
       return s.sessionKey === sessionKey;
     });
     if (local) {
-      setModalHeader(local.dateLabel, local.place, local.filledCount, local.maxSlots);
+      setModalHeader(
+        local.dateLabel,
+        local.place,
+        local.filledCount,
+        local.maxSlots,
+        local.sessionType,
+      );
     }
 
     $("modalOverlay").classList.add("open");
@@ -999,7 +1040,9 @@
     }
   }
 
-  function setModalHeader(dateLabel, place, filledCount, maxSlots) {
+  function setModalHeader(dateLabel, place, filledCount, maxSlots, sessionType) {
+    const isTeam = sessionType === "team";
+    const max = maxSlots || (isTeam ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
     const meta = parseLineupDateMeta(dateLabel);
     $("modalTitle").textContent = dateLabel || "日程詳細";
     $("modalDateYear").textContent = meta.year;
@@ -1015,16 +1058,21 @@
       escapeHtml(placeText) +
       "</span>";
     $("modalCount").textContent =
-      "ROSTER " +
+      (isTeam ? "TEAMS " : "ROSTER ") +
       (filledCount != null ? filledCount : "—") +
       " / " +
-      (maxSlots || MAX_PARTICIPANTS);
+      max;
+    const list = $("participantList");
+    if (list) {
+      list.classList.toggle("lineup-table--team", isTeam);
+    }
   }
 
   function onDetailLoaded(data) {
     const s = data.session;
-    setModalHeader(s.dateLabel, s.place, s.filledCount, MAX_PARTICIPANTS);
-    renderParticipantSlots(data.slots || []);
+    const sessionType = s.sessionType || "individual";
+    setModalHeader(s.dateLabel, s.place, s.filledCount, s.maxSlots, sessionType);
+    renderParticipantSlots(data.slots || [], sessionType);
   }
 
   function appendLineupBadge(parent, text, className, title) {
@@ -1035,13 +1083,24 @@
     parent.appendChild(badge);
   }
 
-  function renderParticipantSlots(slots) {
+  function renderParticipantSlots(slots, sessionType) {
     const list = $("participantList");
     list.innerHTML = "";
+    const isTeam = sessionType === "team";
+    const slotLimit = isTeam ? MAX_TEAM_SLOTS : slots.length;
 
-    slots.forEach(function (slot) {
+    for (let index = 0; index < slotLimit; index++) {
+      const slot = slots[index] || {
+        seq: index + 1,
+        display: "",
+        isFirst: false,
+        isFemale: false,
+        isUnconfirmed: false,
+      };
+
       const li = document.createElement("li");
       li.className = "lineup-row";
+      if (isTeam) li.classList.add("lineup-row--team");
       const display = String(slot.display || "").trim();
       const empty = !display;
 
@@ -1052,22 +1111,29 @@
 
       const orderEl = document.createElement("span");
       orderEl.className = "lineup-order";
-      orderEl.textContent = String(slot.seq || "");
+      if (isTeam) {
+        orderEl.textContent = TEAM_SLOT_LABELS[index] || "チーム";
+        orderEl.classList.add("lineup-order--team");
+      } else {
+        orderEl.textContent = String(slot.seq || index + 1);
+      }
       li.appendChild(orderEl);
 
-      const badgesEl = document.createElement("span");
-      badgesEl.className = "lineup-badges";
-      if (empty) {
-        appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
-      } else {
-        if (slot.isFirst) appendLineupBadge(badgesEl, "初", "lineup-badge--first", "初参加");
-        if (slot.isFemale) appendLineupBadge(badgesEl, "女", "lineup-badge--female", "女性");
-        if (slot.isUnconfirmed) appendLineupBadge(badgesEl, "未", "lineup-badge--pending", "未確定");
-        if (!slot.isFirst && !slot.isFemale && !slot.isUnconfirmed) {
+      if (!isTeam) {
+        const badgesEl = document.createElement("span");
+        badgesEl.className = "lineup-badges";
+        if (empty) {
           appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+        } else {
+          if (slot.isFirst) appendLineupBadge(badgesEl, "初", "lineup-badge--first", "初参加");
+          if (slot.isFemale) appendLineupBadge(badgesEl, "女", "lineup-badge--female", "女性");
+          if (slot.isUnconfirmed) appendLineupBadge(badgesEl, "未", "lineup-badge--pending", "未確定");
+          if (!slot.isFirst && !slot.isFemale && !slot.isUnconfirmed) {
+            appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+          }
         }
+        li.appendChild(badgesEl);
       }
-      li.appendChild(badgesEl);
 
       const nameEl = document.createElement("span");
       nameEl.className = "lineup-name";
@@ -1075,7 +1141,7 @@
       li.appendChild(nameEl);
 
       list.appendChild(li);
-    });
+    }
   }
 
   function closeModal() {

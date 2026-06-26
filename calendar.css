@@ -442,6 +442,40 @@ body.cyber-cal .event-chip.is-full:hover {
   box-shadow: 0 0 6px rgba(248, 113, 113, 0.2);
 }
 
+body.cyber-cal .event-chip.event-chip--team {
+  background: #f3e8ff;
+  color: #5b21b6;
+  border-color: rgba(167, 139, 250, 0.55);
+}
+
+body.cyber-cal .event-chip.event-chip--team:hover {
+  background: #e9d5ff;
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.35);
+}
+
+body.cyber-cal .event-chip.event-chip--team.is-full {
+  background: #ede9fe;
+  color: #6d28d9;
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.25);
+}
+
+body.cyber-cal .event-chip.event-chip--team.is-full:hover {
+  background: #ddd6fe;
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.25);
+}
+
+body.cyber-cal .day-cell.past .event-chip.event-chip--team {
+  background: #ede9fe;
+  color: #7c3aed;
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+body.cyber-cal .day-cell.past .event-chip.event-chip--team.is-full {
+  background: #f3f0ff;
+  color: #9ca3af;
+}
+
 body.cyber-cal .day-cell.past .event-chip.is-full {
   background: #f3e8e8;
   color: #9ca3af;
@@ -714,6 +748,20 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .lineup-row--unconfirmed .lineup-name {
   color: #c4b5fd;
+}
+
+.lineup-table--team .lineup-row {
+  grid-template-columns: 4.75rem 1fr;
+}
+
+.lineup-row--team .lineup-order--team {
+  font-family: "Zen Kaku Gothic New", "Hiragino Sans", "Meiryo", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #c4b5fd;
+  text-align: left;
+  padding-left: 0.1rem;
+  white-space: nowrap;
 }
 
 .lineup-order {
