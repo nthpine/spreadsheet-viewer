@@ -395,6 +395,17 @@ body.cyber-cal .day-num.sat {
   color: #0284c7;
 }
 
+body.cyber-cal .day-num.holiday,
+body.cyber-cal .day-num.holiday.sat {
+  color: #dc2626;
+}
+
+body.cyber-cal .day-cell.past .day-num.holiday,
+body.cyber-cal .day-cell.past .day-num.holiday.sat {
+  color: #dc2626;
+  opacity: 0.75;
+}
+
 body.cyber-cal .event-chip {
   display: block;
   width: 100%;

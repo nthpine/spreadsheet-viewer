@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NORTH PINE チーム募集画像</title>
+  <meta name="description" content="NORTH PINE チーム単位募集のInstagramストーリー用画像（1080×1920）" />
+  <link rel="stylesheet" href="team-recruit.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body class="invite-page team-recruit-page">
+  <header>
+    <div class="invite-header-top">
+      <div>
+        <h1>NORTH PINE チーム募集画像</h1>
+        <p class="subtitle">Instagramストーリー用（1080×1920）— 3枚セット</p>
+      </div>
+      <a href="index.html" class="invite-back-link">← カレンダー</a>
+    </div>
+  </header>
+
+  <main>
+    <div id="loadingArea" class="invite-loading" role="status" aria-live="polite">
+      <div class="invite-spinner" aria-hidden="true"></div>
+      <p>画像を生成しています…</p>
+    </div>
+
+    <div id="appContent">
+      <section class="invite-panel">
+        <h2>ストーリー用スライド（3枚）</h2>
+        <p class="team-recruit-note">
+          スライド1：募集のお知らせ／スライド2：試合形式／スライド3：参加方法。
+          画像を長押しまたは右クリックで保存し、Instagramストーリーに順番に投稿してください。
+        </p>
+        <div id="slidesArea" class="team-recruit-slides" aria-live="polite"></div>
+        <div class="team-recruit-actions">
+          <button type="button" id="btnDownloadAll" class="primary" disabled>3枚まとめてダウンロード</button>
+        </div>
+        <p id="statusMsg" class="invite-status" role="status"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/team-recruit.js"></script>
+</body>
+</html>

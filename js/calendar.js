@@ -926,6 +926,12 @@
     num.className = "day-num";
     if (dow === 0) num.classList.add("sun");
     if (dow === 6) num.classList.add("sat");
+    if (typeof isJapaneseHoliday === "function" && isJapaneseHoliday(year, month, day)) {
+      num.classList.add("holiday");
+      const holidayName =
+        typeof getJapaneseHolidayName === "function" ? getJapaneseHolidayName(year, month, day) : "";
+      if (holidayName) num.title = holidayName;
+    }
     num.textContent = day;
     cell.appendChild(num);
 

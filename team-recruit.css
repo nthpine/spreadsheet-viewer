@@ -1,0 +1,59 @@
+@import url("invite.css");
+
+body.team-recruit-page > header h1 {
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.team-recruit-slides {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.team-recruit-slide-block h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.team-recruit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.team-recruit-actions button {
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.team-recruit-actions button.primary {
+  color: var(--bg-deep);
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+  border: none;
+}
+
+.team-recruit-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.team-recruit-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.5;
+}

@@ -59,3 +59,9 @@ feat: DM受信時に自動返信する機能を追加
 - 不要なconsole.logがない
 - 未使用importがない
 - 動作確認済み
+
+## リモートへの反映
+
+- 変更を加えたら、可能な限り `git push origin main` まで実施する
+- `mock-calendar.html` と `js/mock-calendar-data.js` はプレビュー用のため push しない（バナー記載どおり）
+- `node_modules/` と `output/` は `.gitignore` 済みのため commit しない
