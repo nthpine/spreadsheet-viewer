@@ -1042,7 +1042,7 @@
     const filled = ev.filledCount || 0;
     const remaining = max - filled;
     if (remaining <= 0) {
-      return { text: sessionType === "team" ? "満員" : "満員", isFull: true };
+      return { text: sessionType === "team" ? "リーグ" : "満員", isFull: true };
     }
     if (sessionType === "team") {
       return { text: "残" + remaining + "チーム", isFull: false };
