@@ -865,8 +865,9 @@ body.cyber-cal .event-chip .chip-place-name {
 .modal--lineup.modal--lineup-team {
   background-color: #fff;
   color: #1e1b4b;
+  border: 1px solid rgba(167, 139, 250, 0.45);
   box-shadow:
-    0 0 40px rgba(139, 92, 246, 0.18),
+    0 0 40px rgba(139, 92, 246, 0.25),
     0 24px 48px rgba(15, 23, 42, 0.12);
   background-image:
     linear-gradient(rgba(139, 92, 246, 0.12) 1px, transparent 1px),
@@ -883,7 +884,7 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .modal--lineup.modal--lineup-team .lineup-close:hover {
   background: #f3e8ff;
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
 }
 
 .modal--lineup.modal--lineup-team .lineup-header {
@@ -896,7 +897,7 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .modal--lineup.modal--lineup-team .lineup-date-main {
   color: #1e1b4b;
-  text-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.35);
 }
 
 .modal--lineup.modal--lineup-team .lineup-date-dow {
@@ -905,6 +906,7 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .modal--lineup.modal--lineup-team .lineup-time-slot {
   color: #6d28d9;
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.35);
 }
 
 .modal--lineup.modal--lineup-team .lineup-venue {
@@ -913,13 +915,14 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .modal--lineup.modal--lineup-team .lineup-venue svg {
   color: #7c3aed;
+  filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.45));
 }
 
 .modal--lineup.modal--lineup-team .lineup-frame {
-  border-color: #8b5cf6;
+  border-color: #a855f7;
   box-shadow:
-    0 0 18px rgba(139, 92, 246, 0.28),
-    inset 0 0 24px rgba(139, 92, 246, 0.06);
+    0 0 18px rgba(139, 92, 246, 0.55),
+    inset 0 0 24px rgba(139, 92, 246, 0.08);
   background: rgba(250, 245, 255, 0.96);
 }
 
@@ -933,6 +936,7 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .modal--lineup.modal--lineup-team .lineup-row--team .lineup-order--team {
   color: #6d28d9;
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
 }
 
 .modal--lineup.modal--lineup-team .lineup-row--first .lineup-name {
@@ -954,6 +958,7 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .modal--lineup.modal--lineup-team .lineup-count {
   color: #6d28d9;
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
 }
 
 .modal--lineup.modal--lineup-team .modal-loading--lineup {
