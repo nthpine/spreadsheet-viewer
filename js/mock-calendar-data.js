@@ -41,7 +41,9 @@
     return String(dateLabel).replace(/\s+/g, "") + "\t" + String(place).replace(/^@/, "");
   }
 
-  function makeTeamSession(year, month, day, place, teamNames) {
+  function makeTeamSession(year, month, day, place, teamNames, teamCount) {
+    var count = teamCount || (teamNames && teamNames.length) || 3;
+    count = Math.min(3, Math.max(1, count));
     var d = new Date(year, month - 1, day);
     var dow = WEEKDAYS[d.getDay()];
     var dateLabel = month + "/" + day + "(" + dow + ")";
@@ -49,17 +51,17 @@
     var key = sessionKey(dateLabel, p);
     var slots = emptySlots();
     var i;
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < count; i++) {
       slots[i] = {
         seq: i + 1,
-        display: teamNames[i] || "",
+        display: (teamNames && teamNames[i]) || "",
         isFirst: false,
         isFemale: false,
         isUnconfirmed: false,
       };
     }
     var filled = 0;
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < count; i++) {
       if (slots[i].display) filled++;
     }
     var session = {
@@ -76,7 +78,7 @@
         "-" +
         ("0" + day).slice(-2),
       filledCount: filled,
-      maxSlots: 3,
+      maxSlots: count,
       sessionType: "team",
       hasFirst: false,
       hasUnconfirmed: false,
@@ -90,7 +92,7 @@
       day: day,
       dateIso: session.dateIso,
       filledCount: filled,
-      maxSlots: 3,
+      maxSlots: count,
       sessionType: "team",
       hasFirst: false,
       hasUnconfirmed: false,
@@ -183,6 +185,14 @@
       "BLACK WINGS",
       "CRASH BALLERS",
     ]),
+    makeTeamSession(
+      y,
+      m,
+      Math.min(today + 7, new Date(y, m, 0).getDate()),
+      "南高校",
+      ["RED HAWKS", "BLUE STORM"],
+      2,
+    ),
     makeSession(
       y2,
       m2,

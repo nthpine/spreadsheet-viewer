@@ -861,7 +861,7 @@ body.cyber-cal .event-chip .chip-place-name {
   border-top-color: #00aaff;
 }
 
-/* 練習試合（リーグ）: 日付詳細モーダル — 白ベース反転 */
+/* 練習試合: 日付詳細モーダル — 白ベース反転 */
 .modal--lineup.modal--lineup-team {
   background: #fff;
   color: #1e1b4b;

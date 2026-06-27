@@ -375,8 +375,19 @@
     return "team";
   }
 
-  function countFilledSlotsForSession(slots, sessionType) {
-    const limit = sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS;
+  function getTeamMaxSlots(bySeq) {
+    let max = 0;
+    for (let i = 0; i < MAX_TEAM_SLOTS; i++) {
+      if (bySeq[i]) max = i + 1;
+    }
+    return max || 1;
+  }
+
+  function countFilledSlotsForSession(slots, sessionType, maxSlots) {
+    const limit =
+      sessionType === "team"
+        ? maxSlots || MAX_TEAM_SLOTS
+        : MAX_PARTICIPANTS;
     let n = 0;
     for (let i = 0; i < limit; i++) {
       if (slots[i] && normalizeParticipantDisplay(slots[i].display)) n++;
@@ -511,8 +522,9 @@
   function enrichSessionGroup(group, eventDate) {
     const sessionType = detectSessionType(group.bySeq);
     const slots = groupsToSlotsArray(group.bySeq);
-    const filledCount = countFilledSlotsForSession(slots, sessionType);
-    const maxSlots = sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS;
+    const maxSlots =
+      sessionType === "team" ? getTeamMaxSlots(group.bySeq) : MAX_PARTICIPANTS;
+    const filledCount = countFilledSlotsForSession(slots, sessionType, maxSlots);
     let hasFirst = false;
     let hasUnconfirmed = false;
 
@@ -629,11 +641,13 @@
     if (!group || typeof group !== "object") return group;
     const slots = Array.isArray(group.slots) ? group.slots : [];
     const sessionType = group.sessionType === "team" ? "team" : "individual";
-    const maxSlots = group.maxSlots || (sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
+    const maxSlots =
+      group.maxSlots ||
+      (sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
     const filledCount =
       group.filledCount != null
         ? group.filledCount
-        : countFilledSlotsForSession(slots, sessionType);
+        : countFilledSlotsForSession(slots, sessionType, maxSlots);
     return Object.assign({}, group, {
       sessionKey: group.sessionKey || sessionKey,
       sessionType: sessionType,
@@ -660,8 +674,15 @@
         const sessionType = detectSessionType(source.bySeq);
         const group = data.groupByKey[key];
         group.sessionType = sessionType;
-        group.maxSlots = sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS;
-        group.filledCount = countFilledSlotsForSession(group.slots || [], sessionType);
+        group.maxSlots =
+          sessionType === "team"
+            ? getTeamMaxSlots(source.bySeq)
+            : MAX_PARTICIPANTS;
+        group.filledCount = countFilledSlotsForSession(
+          group.slots || [],
+          sessionType,
+          group.maxSlots,
+        );
       });
       if (Array.isArray(data.sessions)) {
         data.sessions.forEach(function (session) {
@@ -1041,11 +1062,11 @@
     const max = ev.maxSlots || (sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
     const filled = ev.filledCount || 0;
     const remaining = max - filled;
-    if (remaining <= 0) {
-      return { text: sessionType === "team" ? "リーグ" : "満員", isFull: true };
-    }
     if (sessionType === "team") {
-      return { text: "残" + remaining + "チーム", isFull: false };
+      return { text: "練習試合", isFull: remaining <= 0 };
+    }
+    if (remaining <= 0) {
+      return { text: "満員", isFull: true };
     }
     return { text: "残" + remaining + "名", isFull: false };
   }
@@ -1139,7 +1160,7 @@
     const s = data.session;
     const sessionType = s.sessionType || "individual";
     setModalHeader(s.dateLabel, s.place, s.filledCount, s.maxSlots, sessionType);
-    renderParticipantSlots(data.slots || [], sessionType);
+    renderParticipantSlots(data.slots || [], sessionType, s.maxSlots);
   }
 
   function appendLineupBadge(parent, text, className, title) {
@@ -1150,11 +1171,11 @@
     parent.appendChild(badge);
   }
 
-  function renderParticipantSlots(slots, sessionType) {
+  function renderParticipantSlots(slots, sessionType, maxSlots) {
     const list = $("participantList");
     list.innerHTML = "";
     const isTeam = sessionType === "team";
-    const slotLimit = isTeam ? MAX_TEAM_SLOTS : slots.length;
+    const slotLimit = isTeam ? maxSlots || MAX_TEAM_SLOTS : slots.length;
 
     for (let index = 0; index < slotLimit; index++) {
       const slot = slots[index] || {
