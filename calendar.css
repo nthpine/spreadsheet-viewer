@@ -1019,17 +1019,143 @@ body.cyber-cal .club-info-tabs__btn {
   transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
-body.cyber-cal .club-info-tabs__btn:hover {
+body.cyber-cal .club-info-tabs__btn--individual:hover {
   color: #0c4a6e;
   background: #e0f2fe;
   border-color: rgba(0, 153, 221, 0.35);
 }
 
-body.cyber-cal .club-info-tabs__btn[aria-selected="true"] {
+body.cyber-cal .club-info-tabs__btn--practice:hover {
+  color: #1e293b;
+  background: #cbd5e1;
+  border-color: #94a3b8;
+}
+
+body.cyber-cal .club-info-tabs__btn--individual[aria-selected="true"] {
   color: #0c4a6e;
   background: #fff;
   border-color: rgba(0, 153, 221, 0.45);
   box-shadow: 0 2px 8px rgba(0, 153, 221, 0.12);
+}
+
+body.cyber-cal .club-info-tabs__btn--practice[aria-selected="true"] {
+  color: #f8fafc;
+  background: #475569;
+  border-color: #334155;
+  box-shadow: 0 2px 8px rgba(51, 65, 85, 0.28);
+}
+
+body.cyber-cal .club-info-panel--practice-active .club-info-panel__head {
+  background: linear-gradient(180deg, #e2e8f0 0%, #f1f5f9 100%);
+  border-bottom-color: #cbd5e1;
+}
+
+body.cyber-cal .club-info-tab-panel--individual {
+  background: #fff;
+}
+
+body.cyber-cal .club-info-tab-panel--practice {
+  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+  border-top: 1px solid #94a3b8;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-panel__lead {
+  color: #f8fafc;
+  background: #64748b;
+  border-color: #475569;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-section__title {
+  color: #1e293b;
+  border-bottom-color: #64748b;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-section__intro {
+  color: #334155;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-card {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  box-shadow: 0 1px 3px rgba(30, 41, 59, 0.08);
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-card__label {
+  color: #334155;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-card__text {
+  color: #1e293b;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-notice-panel {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-notice-list {
+  color: #334155;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-notice-list li::before {
+  background: #64748b;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-flow-panel {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-flow-panel__title {
+  color: #1e293b;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-flow-list li {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-flow-list__time {
+  color: #334155;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-team-example {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-team-example__title,
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-order__title,
+body.cyber-cal .club-info-tab-panel--practice .club-info-team-round__label {
+  color: #1e293b;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-team-example__intro,
+body.cyber-cal .club-info-tab-panel--practice .club-info-team-example__summary,
+body.cyber-cal .club-info-tab-panel--practice .club-info-team-round__note {
+  color: #334155;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-card {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-card__order {
+  color: #64748b;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-vs,
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-connector {
+  color: #64748b;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-section__note {
+  background: #e2e8f0;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  color: #475569;
 }
 
 body.cyber-cal .club-info-tab-panel {

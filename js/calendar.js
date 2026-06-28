@@ -1287,6 +1287,7 @@
 
     function activateTab(tab) {
       var targetId = tab.getAttribute("aria-controls");
+      var panelRoot = tablist.closest(".club-info-panel");
       tabs.forEach(function (t) {
         var selected = t === tab;
         t.setAttribute("aria-selected", selected ? "true" : "false");
@@ -1295,6 +1296,12 @@
       panels.forEach(function (panel) {
         panel.hidden = panel.id !== targetId;
       });
+      if (panelRoot) {
+        panelRoot.classList.toggle(
+          "club-info-panel--practice-active",
+          tab.getAttribute("data-tab") === "practice"
+        );
+      }
     }
 
     tabs.forEach(function (tab) {

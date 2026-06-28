@@ -80,7 +80,7 @@
         <div class="club-info-tabs" role="tablist" aria-label="参加形式の切り替え">
           <button
             type="button"
-            class="club-info-tabs__btn"
+            class="club-info-tabs__btn club-info-tabs__btn--individual"
             role="tab"
             id="club-info-tab-btn-individual"
             aria-selected="true"
@@ -89,7 +89,7 @@
           >個人参加</button>
           <button
             type="button"
-            class="club-info-tabs__btn"
+            class="club-info-tabs__btn club-info-tabs__btn--practice"
             role="tab"
             id="club-info-tab-btn-practice"
             aria-selected="false"
@@ -102,7 +102,7 @@
 
       <div
         id="club-info-tab-individual"
-        class="club-info-tab-panel"
+        class="club-info-tab-panel club-info-tab-panel--individual"
         role="tabpanel"
         aria-labelledby="club-info-tab-btn-individual"
       >
@@ -315,65 +315,35 @@
 
       <div
         id="club-info-tab-practice"
-        class="club-info-tab-panel"
+        class="club-info-tab-panel club-info-tab-panel--practice"
         role="tabpanel"
         aria-labelledby="club-info-tab-btn-practice"
         hidden
       >
         <p class="club-info-panel__lead">
-          参加希望の方は、<strong>年齢・バスケ歴・性別</strong>を記入の上
-          <a href="https://www.instagram.com/sapporo_northpine" target="_blank" rel="noopener noreferrer">Instagram（@sapporo_northpine）</a>
-          のDMまたはメッセージにてご連絡ください。当日キャンセルが出た場合はストーリーにて募集しています。
+          個人参加に参加したことのある方を対象としています。練習試合へのご案内は、個人参加時などにお渡ししています。
         </p>
 
         <div class="club-info-panel__body">
           <section class="club-info-section" aria-labelledby="clubTraitsPracticeHeading">
-            <h3 id="clubTraitsPracticeHeading" class="club-info-section__title">サークルの特徴</h3>
+            <h3 id="clubTraitsPracticeHeading" class="club-info-section__title">練習試合の特徴</h3>
             <p class="club-info-section__intro">
-              毎回参加者が異なる流動的なサークルです。固定メンバーはなく継続参加の方もゲスト扱い。
-              初参加・お一人参加の方にも配慮し、横のつながりは深めすぎないよう意識しています。
+              メンバーは固定せず、流動的に構成していきたい練習試合です。
+              チームプレイができる方で、しっかり戦いたい方向け。
+              毎回参加者が異なるため、継続参加の方もゲスト扱いです。
             </p>
             <div class="club-info-cards">
               <article class="club-info-card">
-                <h4 class="club-info-card__label">雰囲気</h4>
-                <p class="club-info-card__text">一生懸命プレーできる方。緩すぎ・ガチすぎ・賑やかすぎ・堅苦しすぎが苦手な方に向いています。</p>
-              </article>
-              <article class="club-info-card">
-                <h4 class="club-info-card__label">対象年齢</h4>
-                <p class="club-info-card__text">だいたい30歳まで。学生可（高校生〜、中学生は要相談）。</p>
-              </article>
-              <article class="club-info-card">
                 <h4 class="club-info-card__label">人数・試合</h4>
-                <p class="club-info-card__text">12〜15人。3チーム・計3巡・合計9試合（1人あたり6試合）。</p>
+                <p class="club-info-card__text">3チーム・計3巡・合計9試合（1人あたり6試合）。</p>
               </article>
               <article class="club-info-card">
                 <h4 class="club-info-card__label">レベル</h4>
-                <p class="club-info-card__text">基本的に経験者のみ。ガチ勢とエンジョイ勢の中間くらい。女性も参加可能です。</p>
+                <p class="club-info-card__text">基本的に経験者のみ。ハードにプレーできる方。</p>
               </article>
               <article class="club-info-card">
                 <h4 class="club-info-card__label">参加費</h4>
                 <p class="club-info-card__text">200円（最後に回収）。</p>
-              </article>
-              <article class="club-info-card club-info-card--full">
-                <h4 class="club-info-card__label">活動</h4>
-                <dl class="club-info-card__details">
-                  <div class="club-info-card__detail-row">
-                    <dt>日程</dt>
-                    <dd>月〜土</dd>
-                  </div>
-                  <div class="club-info-card__detail-row">
-                    <dt>時間</dt>
-                    <dd>19:15〜21:45</dd>
-                  </div>
-                  <div class="club-info-card__detail-row">
-                    <dt>場所</dt>
-                    <dd>札幌市東区・豊平区・北区の学校体育館</dd>
-                  </div>
-                  <div class="club-info-card__detail-row">
-                    <dt>備考</dt>
-                    <dd>他チーム在籍の方も歓迎。大会出場予定は現時点でありません。</dd>
-                  </div>
-                </dl>
               </article>
             </div>
           </section>
@@ -403,7 +373,7 @@
             <div class="club-info-team-example">
               <h4 class="club-info-team-example__title">試合の進め方</h4>
               <p class="club-info-team-example__intro">
-                参加は12〜15人です。チームは参加者同士で決めていただき、3巡とも同じメンバーでプレーします。
+                3チームでプレーします。チームは参加者同士で決めていただき、3巡とも同じメンバーでプレーします。
                 世話人によるチームの組み替えはありません。
               </p>
 
