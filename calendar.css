@@ -997,6 +997,53 @@ body.cyber-cal .club-info-panel__head {
   border-bottom: 1px solid var(--border);
 }
 
+body.cyber-cal .club-info-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+body.cyber-cal .club-info-tabs__btn {
+  flex: 1;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+body.cyber-cal .club-info-tabs__btn:hover {
+  color: #0c4a6e;
+  background: #e0f2fe;
+  border-color: rgba(0, 153, 221, 0.35);
+}
+
+body.cyber-cal .club-info-tabs__btn[aria-selected="true"] {
+  color: #0c4a6e;
+  background: #fff;
+  border-color: rgba(0, 153, 221, 0.45);
+  box-shadow: 0 2px 8px rgba(0, 153, 221, 0.12);
+}
+
+body.cyber-cal .club-info-tab-panel {
+  padding: 1.25rem 1.25rem 0;
+}
+
+body.cyber-cal .club-info-tab-panel .club-info-panel__lead {
+  margin-bottom: 1.25rem;
+}
+
+body.cyber-cal .club-info-tab-panel .club-info-panel__body {
+  padding: 0 0 1.25rem;
+}
+
 body.cyber-cal .club-info-panel__title {
   margin: 0 0 0.75rem;
   font-family: "Orbitron", "Rajdhani", sans-serif;

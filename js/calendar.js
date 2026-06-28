@@ -1278,7 +1278,47 @@
     }
   }
 
+  function initClubInfoTabs() {
+    var tablist = document.querySelector(".club-info-tabs");
+    if (!tablist) return;
+
+    var tabs = tablist.querySelectorAll('[role="tab"]');
+    var panels = document.querySelectorAll(".club-info-tab-panel");
+
+    function activateTab(tab) {
+      var targetId = tab.getAttribute("aria-controls");
+      tabs.forEach(function (t) {
+        var selected = t === tab;
+        t.setAttribute("aria-selected", selected ? "true" : "false");
+        t.tabIndex = selected ? 0 : -1;
+      });
+      panels.forEach(function (panel) {
+        panel.hidden = panel.id !== targetId;
+      });
+    }
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        activateTab(tab);
+      });
+      tab.addEventListener("keydown", function (e) {
+        var index = Array.prototype.indexOf.call(tabs, tab);
+        var next = -1;
+        if (e.key === "ArrowRight") next = (index + 1) % tabs.length;
+        else if (e.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
+        else if (e.key === "Home") next = 0;
+        else if (e.key === "End") next = tabs.length - 1;
+        if (next >= 0) {
+          e.preventDefault();
+          tabs[next].focus();
+          activateTab(tabs[next]);
+        }
+      });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
+    initClubInfoTabs();
     $("modalTimeSlot").textContent = EVENT_TIME_SLOT;
     $("closeModalBtn").addEventListener("click", closeModal);
     $("modalOverlay").addEventListener("click", function (e) {
