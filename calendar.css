@@ -1127,14 +1127,27 @@ body.cyber-cal .club-info-tab-panel--practice .club-info-team-example {
 
 body.cyber-cal .club-info-tab-panel--practice .club-info-team-example__title,
 body.cyber-cal .club-info-tab-panel--practice .club-info-match-order__title,
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-variant__title,
 body.cyber-cal .club-info-tab-panel--practice .club-info-team-round__label {
   color: #1e293b;
 }
 
 body.cyber-cal .club-info-tab-panel--practice .club-info-team-example__intro,
 body.cyber-cal .club-info-tab-panel--practice .club-info-team-example__summary,
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-variant__lead,
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-variant__summary,
 body.cyber-cal .club-info-tab-panel--practice .club-info-team-round__note {
   color: #334155;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-variant {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+body.cyber-cal .club-info-tab-panel--practice .club-info-match-order {
+  background: #f1f5f9;
+  border-color: #94a3b8;
 }
 
 body.cyber-cal .club-info-tab-panel--practice .club-info-match-card {
@@ -1521,11 +1534,46 @@ body.cyber-cal .club-info-team-tag--c {
 }
 
 body.cyber-cal .club-info-match-order {
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   padding: 0.85rem;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
+}
+
+body.cyber-cal .club-info-match-variant {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+body.cyber-cal .club-info-match-variant + .club-info-match-variant {
+  margin-top: 0.85rem;
+}
+
+body.cyber-cal .club-info-match-variant__title {
+  margin: 0 0 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+body.cyber-cal .club-info-match-variant__lead,
+body.cyber-cal .club-info-match-variant__summary {
+  margin: 0 0 0.75rem;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: #374151;
+}
+
+body.cyber-cal .club-info-match-variant__summary {
+  margin-bottom: 0;
+}
+
+body.cyber-cal .club-info-match-order__diagram--two-team {
+  padding: 0.25rem 0;
 }
 
 body.cyber-cal .club-info-match-order__title {

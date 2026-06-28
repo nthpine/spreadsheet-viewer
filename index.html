@@ -321,26 +321,26 @@
         hidden
       >
         <p class="club-info-panel__lead">
-          個人参加に参加したことのある方を対象としています。参加希望の方は詳細を私に確認してください。
+          個人参加に参加したことのある方を対象としています。参加希望の方は、詳細を確認してください。
           連絡は、過去に個人参加したことのある方からお願いします。
-          ノースパインとして個人で出る場合はその方から、チーム単位で参加する場合も、一度でも個人参加したことのある方からご連絡ください。
+          チーム単位で参加する場合は、一度でも個人参加したことのある方からご連絡ください。
         </p>
 
         <div class="club-info-panel__body">
           <section class="club-info-section" aria-labelledby="clubTraitsPracticeHeading">
             <h3 id="clubTraitsPracticeHeading" class="club-info-section__title">練習試合の特徴</h3>
             <p class="club-info-section__intro">
-              メンバーは固定せず、流動的に構成していきたい練習試合です。
-              チームプレイができる方で、しっかり戦いたい方向け。
+              メンバーを固定せず、流動的に構成していきます。
+              チームプレイができる方で、しっかり戦いたい方向けです。
             </p>
             <div class="club-info-cards">
               <article class="club-info-card">
                 <h4 class="club-info-card__label">人数・試合</h4>
-                <p class="club-info-card__text">3チーム・計3巡・合計9試合。</p>
+                <p class="club-info-card__text">2チームもしくは3チームで実施します。</p>
               </article>
               <article class="club-info-card">
                 <h4 class="club-info-card__label">レベル</h4>
-                <p class="club-info-card__text">基本的に経験者のみ。ハードにプレーできる方。</p>
+                <p class="club-info-card__text">基本的に経験者のみ。ハードにプレーできる方です。</p>
               </article>
               <article class="club-info-card">
                 <h4 class="club-info-card__label">参加費</h4>
@@ -374,45 +374,67 @@
             <div class="club-info-team-example">
               <h4 class="club-info-team-example__title">試合の進め方</h4>
               <p class="club-info-team-example__intro">
-                3チームでプレーします。チームは参加者同士で決めていただき、3巡とも同じメンバーでプレーします。
-                チームの組み替えはありません。
+                チームは参加者同士で決めていただき、各巡とも同じメンバーでプレーします。チームの組み替えはありません。
               </p>
 
-              <div class="club-info-match-order">
-                <h5 class="club-info-match-order__title">試合の順番（各巡ともこの順で実施）</h5>
-                <div class="club-info-match-order__diagram" role="img" aria-label="試合順：1試合目A対B、2試合目B対C、3試合目C対A">
-                  <div class="club-info-match-card">
-                    <span class="club-info-match-card__order">1</span>
-                    <div class="club-info-match-pair">
-                      <span class="club-info-team-tag club-info-team-tag--pink">A</span>
-                      <span class="club-info-match-vs">-</span>
-                      <span class="club-info-team-tag club-info-team-tag--sky">B</span>
+              <div class="club-info-match-variant">
+                <h5 class="club-info-match-variant__title">3チームの場合</h5>
+                <p class="club-info-match-variant__lead">計3巡・合計9試合です。</p>
+                <div class="club-info-match-order">
+                  <h6 class="club-info-match-order__title">試合の順番（各巡ともこの順で実施）</h6>
+                  <div class="club-info-match-order__diagram" role="img" aria-label="3チームの試合順：1試合目A対B、2試合目B対C、3試合目C対A">
+                    <div class="club-info-match-card">
+                      <span class="club-info-match-card__order">1</span>
+                      <div class="club-info-match-pair">
+                        <span class="club-info-team-tag club-info-team-tag--pink">A</span>
+                        <span class="club-info-match-vs">-</span>
+                        <span class="club-info-team-tag club-info-team-tag--sky">B</span>
+                      </div>
                     </div>
-                  </div>
-                  <span class="club-info-match-connector" aria-hidden="true">→</span>
-                  <div class="club-info-match-card">
-                    <span class="club-info-match-card__order">2</span>
-                    <div class="club-info-match-pair">
-                      <span class="club-info-team-tag club-info-team-tag--sky">B</span>
-                      <span class="club-info-match-vs">-</span>
-                      <span class="club-info-team-tag club-info-team-tag--pink">C</span>
+                    <span class="club-info-match-connector" aria-hidden="true">→</span>
+                    <div class="club-info-match-card">
+                      <span class="club-info-match-card__order">2</span>
+                      <div class="club-info-match-pair">
+                        <span class="club-info-team-tag club-info-team-tag--sky">B</span>
+                        <span class="club-info-match-vs">-</span>
+                        <span class="club-info-team-tag club-info-team-tag--pink">C</span>
+                      </div>
                     </div>
-                  </div>
-                  <span class="club-info-match-connector" aria-hidden="true">→</span>
-                  <div class="club-info-match-card">
-                    <span class="club-info-match-card__order">3</span>
-                    <div class="club-info-match-pair">
-                      <span class="club-info-team-tag club-info-team-tag--pink">C</span>
-                      <span class="club-info-match-vs">-</span>
-                      <span class="club-info-team-tag club-info-team-tag--sky">A</span>
+                    <span class="club-info-match-connector" aria-hidden="true">→</span>
+                    <div class="club-info-match-card">
+                      <span class="club-info-match-card__order">3</span>
+                      <div class="club-info-match-pair">
+                        <span class="club-info-team-tag club-info-team-tag--pink">C</span>
+                        <span class="club-info-match-vs">-</span>
+                        <span class="club-info-team-tag club-info-team-tag--sky">A</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+                <p class="club-info-match-variant__summary">
+                  各巡で上記の順に3試合（A-B → B-C → C-A）を行い、3巡で合計9試合です。
+                </p>
               </div>
 
-              <p class="club-info-team-example__summary">
-                各巡で上記の順に3試合（A-B → B-C → C-A）を行い、3巡で合計9試合。
-              </p>
+              <div class="club-info-match-variant">
+                <h5 class="club-info-match-variant__title">2チームの場合</h5>
+                <p class="club-info-match-variant__lead">Cチームはなく、A対Bのみ。合計6試合です（休憩は長めに取ります）。</p>
+                <div class="club-info-match-order">
+                  <h6 class="club-info-match-order__title">試合の形</h6>
+                  <div class="club-info-match-order__diagram club-info-match-order__diagram--two-team" role="img" aria-label="2チームの試合：A対B">
+                    <div class="club-info-match-card">
+                      <div class="club-info-match-pair">
+                        <span class="club-info-team-tag club-info-team-tag--pink">A</span>
+                        <span class="club-info-match-vs">-</span>
+                        <span class="club-info-team-tag club-info-team-tag--sky">B</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p class="club-info-match-variant__summary">
+                  すべてA対Bの試合で進めます。
+                </p>
+              </div>
             </div>
           </section>
         </div>
