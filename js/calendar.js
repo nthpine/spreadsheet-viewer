@@ -1239,6 +1239,7 @@
 
   function appendLineupParticipantRow(list, slot, options) {
     const opts = options || {};
+    const hideBadges = !!opts.hideBadges;
     const li = document.createElement("li");
     li.className = "lineup-row";
     if (opts.extraClass) li.classList.add(opts.extraClass);
@@ -1246,28 +1247,32 @@
     const display = String(slot.display || "").trim();
     const empty = !display;
     if (empty) li.classList.add("lineup-row--empty");
-    if (!empty && slot.isFirst) li.classList.add("lineup-row--first");
-    if (!empty && slot.isFemale) li.classList.add("lineup-row--female");
-    if (!empty && slot.isUnconfirmed) li.classList.add("lineup-row--unconfirmed");
+    if (!hideBadges) {
+      if (!empty && slot.isFirst) li.classList.add("lineup-row--first");
+      if (!empty && slot.isFemale) li.classList.add("lineup-row--female");
+      if (!empty && slot.isUnconfirmed) li.classList.add("lineup-row--unconfirmed");
+    }
 
     const orderEl = document.createElement("span");
     orderEl.className = "lineup-order";
     orderEl.textContent = String(slot.seq || "");
     li.appendChild(orderEl);
 
-    const badgesEl = document.createElement("span");
-    badgesEl.className = "lineup-badges";
-    if (empty) {
-      appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
-    } else {
-      if (slot.isFirst) appendLineupBadge(badgesEl, "初", "lineup-badge--first", "初参加");
-      if (slot.isFemale) appendLineupBadge(badgesEl, "女", "lineup-badge--female", "女性");
-      if (slot.isUnconfirmed) appendLineupBadge(badgesEl, "未", "lineup-badge--pending", "未確定");
-      if (!slot.isFirst && !slot.isFemale && !slot.isUnconfirmed) {
+    if (!hideBadges) {
+      const badgesEl = document.createElement("span");
+      badgesEl.className = "lineup-badges";
+      if (empty) {
         appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+      } else {
+        if (slot.isFirst) appendLineupBadge(badgesEl, "初", "lineup-badge--first", "初参加");
+        if (slot.isFemale) appendLineupBadge(badgesEl, "女", "lineup-badge--female", "女性");
+        if (slot.isUnconfirmed) appendLineupBadge(badgesEl, "未", "lineup-badge--pending", "未確定");
+        if (!slot.isFirst && !slot.isFemale && !slot.isUnconfirmed) {
+          appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+        }
       }
+      li.appendChild(badgesEl);
     }
-    li.appendChild(badgesEl);
 
     const nameEl = document.createElement("span");
     nameEl.className = "lineup-name";
@@ -1341,7 +1346,10 @@
       if (isTeam && index === 0 && display) {
         const members = Array.isArray(slot.members) ? slot.members : [];
         members.forEach(function (member) {
-          appendLineupParticipantRow(list, member, { extraClass: "lineup-row--member" });
+          appendLineupParticipantRow(list, member, {
+            extraClass: "lineup-row--member",
+            hideBadges: true,
+          });
         });
       }
     }
