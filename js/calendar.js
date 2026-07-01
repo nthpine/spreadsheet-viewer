@@ -423,15 +423,23 @@
     return y + "-" + m + "-" + day;
   }
 
+  const NEXT_MONTH_RELEASE_DAY = 23;
+
   function getTodayLocal() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
 
+  function shouldShowNextMonth() {
+    return getTodayLocal().getDate() >= NEXT_MONTH_RELEASE_DAY;
+  }
+
   function getTwoMonthRange() {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59, 999);
+    const today = getTodayLocal();
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end = shouldShowNextMonth()
+      ? new Date(today.getFullYear(), today.getMonth() + 2, 0, 23, 59, 59, 999)
+      : new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
     return { start: start, end: end };
   }
 
@@ -891,10 +899,17 @@
       el.textContent = "日程を読み込めませんでした";
       return;
     }
-    el.textContent =
-      formatYearMonth(range.startYear, range.startMonth) +
-      " 〜 " +
-      formatYearMonth(range.endYear, range.endMonth);
+    if (
+      range.startYear === range.endYear &&
+      range.startMonth === range.endMonth
+    ) {
+      el.textContent = formatYearMonth(range.startYear, range.startMonth);
+    } else {
+      el.textContent =
+        formatYearMonth(range.startYear, range.startMonth) +
+        " 〜 " +
+        formatYearMonth(range.endYear, range.endMonth);
+    }
   }
 
   function onCalendarLoaded(data) {
@@ -919,13 +934,15 @@
     area.innerHTML = "";
     area.style.display = "grid";
 
-    const now = new Date();
-    const m1 = { year: now.getFullYear(), month: now.getMonth() + 1 };
-    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const m2 = { year: next.getFullYear(), month: next.getMonth() + 1 };
+    const today = getTodayLocal();
+    const m1 = { year: today.getFullYear(), month: today.getMonth() + 1 };
 
     area.appendChild(buildMonthCalendar(m1.year, m1.month));
-    area.appendChild(buildMonthCalendar(m2.year, m2.month));
+
+    if (shouldShowNextMonth()) {
+      const next = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      area.appendChild(buildMonthCalendar(next.getFullYear(), next.getMonth() + 1));
+    }
   }
 
   function buildMonthCalendar(year, month) {
