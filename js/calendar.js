@@ -38,6 +38,8 @@
   }
   const MAX_PARTICIPANTS = 15;
   const MAX_TEAM_SLOTS = 3;
+  /** record シート: H列（0-based index 7）以降が練習試合チームのメンバー名 */
+  const TEAM_MEMBER_COL_START = 7;
   const TEAM_SLOT_LABELS = ["チームA", "チームB", "チームC"];
   const BUNDLE_CACHE_TTL_MS = 10 * 60 * 1000;
   const BUNDLE_IDB_NAME = "north-pine-viewer";
@@ -336,10 +338,27 @@
         isFirst: Boolean(parsed.isFirst || fromCb.isFirst),
         isFemale: Boolean(parsed.isFemale || fromCb.isFemale),
         isUnconfirmed: Boolean(fromCb.isUnconfirmed),
+        members: parseTeamMembersFromRow(row),
       };
     }
 
     return groups;
+  }
+
+  function parseTeamMembersFromRow(row) {
+    const members = [];
+    for (let col = TEAM_MEMBER_COL_START; col < row.length; col++) {
+      const parsed = parseParticipantCell(row[col]);
+      if (!parsed.display) continue;
+      members.push({
+        seq: members.length + 1,
+        display: parsed.display,
+        isFirst: Boolean(parsed.isFirst),
+        isFemale: false,
+        isUnconfirmed: false,
+      });
+    }
+    return members;
   }
 
   function groupsToSlotsArray(bySeq) {
@@ -354,6 +373,7 @@
           isFirst: false,
           isFemale: false,
           isUnconfirmed: false,
+          members: [],
         });
       }
     }
@@ -647,7 +667,17 @@
 
   function normalizeEnrichedGroup(group, sessionKey) {
     if (!group || typeof group !== "object") return group;
-    const slots = Array.isArray(group.slots) ? group.slots : [];
+    const slots = (Array.isArray(group.slots) ? group.slots : []).map(function (slot) {
+      return Object.assign(
+        {
+          members: [],
+        },
+        slot,
+        {
+          members: Array.isArray(slot.members) ? slot.members : [],
+        },
+      );
+    });
     const sessionType = group.sessionType === "team" ? "team" : "individual";
     const maxSlots =
       group.maxSlots ||
@@ -665,13 +695,29 @@
     });
   }
 
+  function mergeTeamMembersIntoSlots(slots, bySeq) {
+    if (!Array.isArray(slots) || !bySeq) return;
+    for (let i = 0; i < slots.length; i++) {
+      if (bySeq[i] && Array.isArray(bySeq[i].members)) {
+        slots[i].members = bySeq[i].members;
+      }
+    }
+  }
+
   async function repairGasPayloadMetadata(data) {
     if (!data || !data.groupByKey) return data;
 
     const needsRepair = Object.keys(data.groupByKey).some(function (key) {
       return !data.groupByKey[key].sessionType;
     });
-    if (!needsRepair) return data;
+    const needsMembers = Object.keys(data.groupByKey).some(function (key) {
+      const slots = data.groupByKey[key].slots;
+      if (!Array.isArray(slots) || slots.length === 0) return false;
+      return slots.some(function (slot) {
+        return !Array.isArray(slot.members);
+      });
+    });
+    if (!needsRepair && !needsMembers) return data;
 
     try {
       const rows = await fetchRecordRows(true);
@@ -679,18 +725,21 @@
       Object.keys(data.groupByKey).forEach(function (key) {
         const source = built[key];
         if (!source) return;
-        const sessionType = detectSessionType(source.bySeq);
         const group = data.groupByKey[key];
-        group.sessionType = sessionType;
-        group.maxSlots =
-          sessionType === "team"
-            ? getTeamMaxSlots(source.bySeq)
-            : MAX_PARTICIPANTS;
-        group.filledCount = countFilledSlotsForSession(
-          group.slots || [],
-          sessionType,
-          group.maxSlots,
-        );
+        mergeTeamMembersIntoSlots(group.slots, source.bySeq);
+        if (!group.sessionType) {
+          const sessionType = detectSessionType(source.bySeq);
+          group.sessionType = sessionType;
+          group.maxSlots =
+            sessionType === "team"
+              ? getTeamMaxSlots(source.bySeq)
+              : MAX_PARTICIPANTS;
+          group.filledCount = countFilledSlotsForSession(
+            group.slots || [],
+            sessionType,
+            group.maxSlots,
+          );
+        }
       });
       if (Array.isArray(data.sessions)) {
         data.sessions.forEach(function (session) {
@@ -1188,6 +1237,47 @@
     parent.appendChild(badge);
   }
 
+  function appendLineupParticipantRow(list, slot, options) {
+    const opts = options || {};
+    const li = document.createElement("li");
+    li.className = "lineup-row";
+    if (opts.extraClass) li.classList.add(opts.extraClass);
+
+    const display = String(slot.display || "").trim();
+    const empty = !display;
+    if (empty) li.classList.add("lineup-row--empty");
+    if (!empty && slot.isFirst) li.classList.add("lineup-row--first");
+    if (!empty && slot.isFemale) li.classList.add("lineup-row--female");
+    if (!empty && slot.isUnconfirmed) li.classList.add("lineup-row--unconfirmed");
+
+    const orderEl = document.createElement("span");
+    orderEl.className = "lineup-order";
+    orderEl.textContent = String(slot.seq || "");
+    li.appendChild(orderEl);
+
+    const badgesEl = document.createElement("span");
+    badgesEl.className = "lineup-badges";
+    if (empty) {
+      appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+    } else {
+      if (slot.isFirst) appendLineupBadge(badgesEl, "初", "lineup-badge--first", "初参加");
+      if (slot.isFemale) appendLineupBadge(badgesEl, "女", "lineup-badge--female", "女性");
+      if (slot.isUnconfirmed) appendLineupBadge(badgesEl, "未", "lineup-badge--pending", "未確定");
+      if (!slot.isFirst && !slot.isFemale && !slot.isUnconfirmed) {
+        appendLineupBadge(badgesEl, "—", "lineup-badge--empty", "");
+      }
+    }
+    li.appendChild(badgesEl);
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "lineup-name";
+    nameEl.textContent = empty ? "—" : display;
+    li.appendChild(nameEl);
+
+    list.appendChild(li);
+    return li;
+  }
+
   function renderParticipantSlots(slots, sessionType, maxSlots) {
     const list = $("participantList");
     list.innerHTML = "";
@@ -1201,6 +1291,7 @@
         isFirst: false,
         isFemale: false,
         isUnconfirmed: false,
+        members: [],
       };
 
       const li = document.createElement("li");
@@ -1246,6 +1337,13 @@
       li.appendChild(nameEl);
 
       list.appendChild(li);
+
+      if (isTeam && index === 0 && display) {
+        const members = Array.isArray(slot.members) ? slot.members : [];
+        members.forEach(function (member) {
+          appendLineupParticipantRow(list, member, { extraClass: "lineup-row--member" });
+        });
+      }
     }
   }
 
