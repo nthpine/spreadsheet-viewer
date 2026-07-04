@@ -754,6 +754,67 @@ body.cyber-cal .event-chip .chip-place-name {
   grid-template-columns: 4.75rem 1fr;
 }
 
+.lineup-row--members-accordion {
+  display: block;
+  padding: 0;
+  border-bottom: 1px solid rgba(0, 170, 255, 0.12);
+}
+
+.lineup-members-details {
+  margin: 0;
+}
+
+.lineup-members-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.5rem 0.45rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.82);
+  user-select: none;
+}
+
+.lineup-members-summary::-webkit-details-marker {
+  display: none;
+}
+
+.lineup-members-summary__label {
+  font-family: "Zen Kaku Gothic New", "Hiragino Sans", "Meiryo", sans-serif;
+}
+
+.lineup-members-summary__count {
+  font-family: "Orbitron", sans-serif;
+  font-size: 0.68rem;
+  color: #7dd3fc;
+}
+
+.lineup-members-summary__chevron {
+  margin-left: auto;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+  opacity: 0.75;
+}
+
+.lineup-members-details[open] .lineup-members-summary__chevron {
+  transform: rotate(-135deg);
+  margin-top: 0.2rem;
+}
+
+.lineup-members-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.15rem;
+  border-top: 1px dashed rgba(0, 170, 255, 0.15);
+}
+
 .lineup-table--team .lineup-row--member {
   grid-template-columns: 1.6rem 1fr;
   padding-left: 0.85rem;
@@ -949,6 +1010,22 @@ body.cyber-cal .event-chip .chip-place-name {
 .modal--lineup.modal--lineup-team .lineup-row--team .lineup-order--team {
   color: #6d28d9;
   text-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+.modal--lineup.modal--lineup-team .lineup-row--members-accordion {
+  border-bottom-color: rgba(139, 92, 246, 0.15);
+}
+
+.modal--lineup.modal--lineup-team .lineup-members-summary {
+  color: rgba(30, 27, 75, 0.88);
+}
+
+.modal--lineup.modal--lineup-team .lineup-members-summary__count {
+  color: #6d28d9;
+}
+
+.modal--lineup.modal--lineup-team .lineup-members-list {
+  border-top-color: rgba(139, 92, 246, 0.2);
 }
 
 .modal--lineup.modal--lineup-team .lineup-row--member {

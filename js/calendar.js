@@ -1283,6 +1283,40 @@
     return li;
   }
 
+  function appendTeamMembersAccordion(list, members) {
+    if (!Array.isArray(members) || members.length === 0) return;
+
+    const wrapLi = document.createElement("li");
+    wrapLi.className = "lineup-row lineup-row--members-accordion";
+
+    const details = document.createElement("details");
+    details.className = "lineup-members-details";
+
+    const summary = document.createElement("summary");
+    summary.className = "lineup-members-summary";
+    summary.innerHTML =
+      '<span class="lineup-members-summary__label">メンバー</span>' +
+      '<span class="lineup-members-summary__count">' +
+      members.length +
+      "名</span>" +
+      '<span class="lineup-members-summary__chevron" aria-hidden="true"></span>';
+
+    const innerList = document.createElement("ul");
+    innerList.className = "lineup-members-list";
+
+    members.forEach(function (member) {
+      appendLineupParticipantRow(innerList, member, {
+        extraClass: "lineup-row--member",
+        hideBadges: true,
+      });
+    });
+
+    details.appendChild(summary);
+    details.appendChild(innerList);
+    wrapLi.appendChild(details);
+    list.appendChild(wrapLi);
+  }
+
   function renderParticipantSlots(slots, sessionType, maxSlots) {
     const list = $("participantList");
     list.innerHTML = "";
@@ -1345,12 +1379,7 @@
 
       if (isTeam && index === 0 && display) {
         const members = Array.isArray(slot.members) ? slot.members : [];
-        members.forEach(function (member) {
-          appendLineupParticipantRow(list, member, {
-            extraClass: "lineup-row--member",
-            hideBadges: true,
-          });
-        });
+        appendTeamMembersAccordion(list, members);
       }
     }
   }
