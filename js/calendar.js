@@ -380,14 +380,6 @@
     return slots;
   }
 
-  function countFilledSlots(slots) {
-    let n = 0;
-    for (let i = 0; i < (slots || []).length; i++) {
-      if (normalizeParticipantDisplay(slots[i].display)) n++;
-    }
-    return n;
-  }
-
   function detectSessionType(bySeq) {
     for (let i = 3; i < MAX_PARTICIPANTS; i++) {
       if (bySeq[i]) return "individual";
