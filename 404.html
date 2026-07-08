@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NORTH PINE</title>
+  <script>
+    (function () {
+      var path = location.pathname.replace(/\/$/, "");
+      if (path.slice(-9) === "/practice") {
+        location.replace("index.html?tab=practice");
+        return;
+      }
+      location.replace("index.html");
+    })();
+  </script>
+</head>
+<body>
+  <p><a href="index.html">カレンダーへ</a></p>
+</body>
+</html>

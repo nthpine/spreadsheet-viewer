@@ -1422,6 +1422,19 @@
     }
   }
 
+  function getClubInfoTabFromUrl() {
+    try {
+      var params = new URLSearchParams(location.search);
+      var tab = params.get("tab");
+      if (tab === "practice" || tab === "individual") return tab;
+      var hash = String(location.hash || "").replace(/^#/, "");
+      if (hash === "practice" || hash === "individual") return hash;
+    } catch (_) {
+      /* ignore */
+    }
+    return null;
+  }
+
   function initClubInfoTabs() {
     var tablist = document.querySelector(".club-info-tabs");
     if (!tablist) return;
@@ -1466,6 +1479,12 @@
         }
       });
     });
+
+    var initialTab = getClubInfoTabFromUrl();
+    if (initialTab) {
+      var initialBtn = tablist.querySelector('[data-tab="' + initialTab + '"]');
+      if (initialBtn) activateTab(initialBtn);
+    }
   }
 
   document.addEventListener("DOMContentLoaded", function () {
