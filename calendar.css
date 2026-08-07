@@ -699,6 +699,19 @@ body.cyber-cal .event-chip .chip-place-name {
   opacity: 0.9;
 }
 
+.lineup-venue a.lineup-venue-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lineup-venue a.lineup-venue-link:hover {
+  color: #fff;
+}
+
 .lineup-frame {
   position: relative;
   border: 2px solid #00aaff;

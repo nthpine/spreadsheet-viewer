@@ -59,6 +59,8 @@
   const EVENT_TIME_SLOT = "19:15～21:45";
   const EVENT_TIME_START = "19:15";
   const EVENT_TIME_END_LINE = "～21:45";
+  const MAP_URL_PREFIX = "https://www.google.com/maps/search/?api=1&query=";
+  const MAP_URL_CITY_PREFIX = "札幌市立";
 
   const STATE = {
     schedules: [],
@@ -609,6 +611,7 @@
         maxSlots: group.maxSlots,
         sessionType: group.sessionType,
         sessionKey: group.sessionKey,
+        mapUrl: group.mapUrl || "",
       },
       slots: group.slots,
     };
@@ -684,6 +687,7 @@
       maxSlots: maxSlots,
       filledCount: filledCount,
       slots: slots,
+      mapUrl: group.mapUrl || "",
     });
   }
 
@@ -1159,12 +1163,14 @@
       return s.sessionKey === sessionKey;
     });
     if (local) {
+      const groupMeta = STATE.groupByKey[sessionKey];
       setModalHeader(
         local.dateLabel,
         local.place,
         local.filledCount,
         local.maxSlots,
         local.sessionType,
+        groupMeta && groupMeta.mapUrl,
       );
     }
 
@@ -1182,7 +1188,35 @@
     }
   }
 
-  function setModalHeader(dateLabel, place, filledCount, maxSlots, sessionType) {
+  function normalizePlaceForMapQuery_(place) {
+    const t = String(place || "")
+      .replace(/\([^)]*\)/g, "")
+      .replace(/（[^）]*）/g, "")
+      .replace(/\s+/g, "")
+      .trim();
+    if (!t || t === "—") {
+      return "";
+    }
+    return t;
+  }
+
+  function buildFallbackMapUrl_(place) {
+    const normalized = normalizePlaceForMapQuery_(place);
+    if (!normalized) {
+      return "";
+    }
+    return MAP_URL_PREFIX + encodeURIComponent(MAP_URL_CITY_PREFIX + normalized);
+  }
+
+  function resolveModalMapUrl_(place, mapUrlFromServer) {
+    const fromServer = String(mapUrlFromServer || "").trim();
+    if (fromServer) {
+      return fromServer;
+    }
+    return buildFallbackMapUrl_(place);
+  }
+
+  function setModalHeader(dateLabel, place, filledCount, maxSlots, sessionType, mapUrl) {
     const isTeam = sessionType === "team";
     const max = maxSlots || (isTeam ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
     const meta = parseLineupDateMeta(dateLabel);
@@ -1193,12 +1227,22 @@
     $("modalTimeSlot").textContent = EVENT_TIME_SLOT;
     const placeEl = $("modalPlace");
     const placeText = normalizePlaceName(place);
-    placeEl.innerHTML =
+    const pinSvg =
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
-      '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
-      "<span>" +
-      escapeHtml(placeText) +
-      "</span>";
+      '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+    const resolvedMapUrl = resolveModalMapUrl_(place, mapUrl);
+    if (resolvedMapUrl) {
+      placeEl.innerHTML =
+        '<a class="lineup-venue-link" href="' +
+        escapeHtml(resolvedMapUrl) +
+        '" target="_blank" rel="noopener noreferrer">' +
+        pinSvg +
+        "<span>" +
+        escapeHtml(placeText) +
+        "</span></a>";
+    } else {
+      placeEl.innerHTML = pinSvg + "<span>" + escapeHtml(placeText) + "</span>";
+    }
     $("modalCount").textContent =
       (isTeam ? "TEAMS " : "ROSTER ") +
       (filledCount != null ? filledCount : "—") +
@@ -1217,7 +1261,7 @@
   function onDetailLoaded(data) {
     const s = data.session;
     const sessionType = s.sessionType || "individual";
-    setModalHeader(s.dateLabel, s.place, s.filledCount, s.maxSlots, sessionType);
+    setModalHeader(s.dateLabel, s.place, s.filledCount, s.maxSlots, sessionType, s.mapUrl);
     renderParticipantSlots(data.slots || [], sessionType, s.maxSlots);
   }
 
