@@ -1228,14 +1228,16 @@
     const placeEl = $("modalPlace");
     const placeText = normalizePlaceName(place);
     const pinSvg =
-      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">' +
       '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
     const resolvedMapUrl = resolveModalMapUrl_(place, mapUrl);
     if (resolvedMapUrl) {
       placeEl.innerHTML =
         '<a class="lineup-venue-link" href="' +
         escapeHtml(resolvedMapUrl) +
-        '" target="_blank" rel="noopener noreferrer">' +
+        '" target="_blank" rel="noopener noreferrer" title="地図を開く" aria-label="' +
+        escapeHtml(placeText) +
+        'の地図を開く">' +
         pinSvg +
         "<span>" +
         escapeHtml(placeText) +

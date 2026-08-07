@@ -686,30 +686,61 @@ body.cyber-cal .event-chip .chip-place-name {
 .lineup-venue {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.45rem;
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.82);
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #7dd3fc;
   letter-spacing: 0.04em;
+  line-height: 1.3;
 }
 
 .lineup-venue svg {
   flex-shrink: 0;
-  color: #00aaff;
-  opacity: 0.9;
+  width: 1.15em;
+  height: 1.15em;
+  color: #38bdf8;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.55));
 }
 
 .lineup-venue a.lineup-venue-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  color: inherit;
+  gap: 0.45rem;
+  color: #7dd3fc;
   text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.22em;
   cursor: pointer;
+  border-radius: 4px;
+  padding: 0.1rem 0.15rem;
+  margin: -0.1rem -0.15rem;
+  transition: color 0.15s ease, text-shadow 0.15s ease, background-color 0.15s ease;
 }
 
-.lineup-venue a.lineup-venue-link:hover {
-  color: #fff;
+.lineup-venue a.lineup-venue-link:hover,
+.lineup-venue a.lineup-venue-link:focus-visible {
+  color: #e0f2fe;
+  text-shadow: 0 0 12px rgba(125, 211, 252, 0.65);
+  background-color: rgba(56, 189, 248, 0.12);
+  outline: none;
+}
+
+.lineup-venue a.lineup-venue-link::after {
+  content: "MAP";
+  display: inline-block;
+  margin-left: 0.15rem;
+  padding: 0.12rem 0.4rem;
+  border: 1px solid rgba(125, 211, 252, 0.65);
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  color: #e0f2fe;
+  text-decoration: none;
+  background: rgba(14, 165, 233, 0.25);
 }
 
 .lineup-frame {
@@ -996,12 +1027,29 @@ body.cyber-cal .event-chip .chip-place-name {
 }
 
 .modal--lineup.modal--lineup-team .lineup-venue {
-  color: rgba(30, 27, 75, 0.82);
+  color: #6d28d9;
 }
 
 .modal--lineup.modal--lineup-team .lineup-venue svg {
   color: #7c3aed;
   filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.45));
+}
+
+.modal--lineup.modal--lineup-team .lineup-venue a.lineup-venue-link {
+  color: #6d28d9;
+}
+
+.modal--lineup.modal--lineup-team .lineup-venue a.lineup-venue-link:hover,
+.modal--lineup.modal--lineup-team .lineup-venue a.lineup-venue-link:focus-visible {
+  color: #4c1d95;
+  text-shadow: none;
+  background-color: rgba(139, 92, 246, 0.12);
+}
+
+.modal--lineup.modal--lineup-team .lineup-venue a.lineup-venue-link::after {
+  border-color: rgba(124, 58, 237, 0.55);
+  color: #4c1d95;
+  background: rgba(139, 92, 246, 0.15);
 }
 
 .modal--lineup.modal--lineup-team .lineup-frame {
