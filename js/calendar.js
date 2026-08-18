@@ -790,11 +790,7 @@
     return applyGasCalendarPayload(repaired);
   }
 
-  async function loadCalendarData(skipCache) {
-    if (getGasWebAppUrl()) {
-      return loadCalendarDataFromGas(skipCache);
-    }
-
+  async function loadCalendarDataFromCsv(skipCache) {
     STATE.groupByKey = {};
     const range = getTwoMonthRange();
     const rows = await fetchRecordRows(skipCache);
@@ -810,6 +806,18 @@
       },
       sessions: sessions,
     };
+  }
+
+  async function loadCalendarData(skipCache) {
+    if (getGasWebAppUrl()) {
+      try {
+        return await loadCalendarDataFromGas(skipCache);
+      } catch (_) {
+        return loadCalendarDataFromCsv(skipCache);
+      }
+    }
+
+    return loadCalendarDataFromCsv(skipCache);
   }
 
   // --- UI ---

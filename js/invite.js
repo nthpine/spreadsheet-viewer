@@ -4,7 +4,10 @@
 (function () {
   "use strict";
 
+  const SPREADSHEET_ID = "1-07mnQUToyJjD2pNau99a0dCLmg_0chswzvv3eW4t30";
+  const RECORD_SHEET_NAME = "record";
   const MAX_SLOTS = 15;
+  const MAX_TEAM_SLOTS = 3;
   const DEFAULT_PLACE = "中央体育館";
   const INVITE_BG_URL = "invite-background.png";
   const EVENT_TIME_DISPLAY = "19:15 - 21:45";
@@ -146,6 +149,269 @@
       }
     }
     return todaySession || nearestFuture || null;
+  }
+
+  function csvUrl(sheetName) {
+    const q = new URLSearchParams({ tqx: "out:csv", sheet: sheetName });
+    return `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?${q}`;
+  }
+
+  function csvLooksValid(text) {
+    const t = String(text || "")
+      .replace(/^\uFEFF/, "")
+      .trimStart();
+    if (!t || t.startsWith("<") || t.startsWith("<!")) return false;
+    if (t.length < 2) return false;
+    return t.includes(",") || t.includes("\t");
+  }
+
+  async function fetchSheetText(sheetName) {
+    const url = csvUrl(sheetName);
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (fetchErr) {
+      throw new Error(formatUserError(fetchErr));
+    }
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (!csvLooksValid(text)) return null;
+    return text;
+  }
+
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let i = 0;
+    let inQuotes = false;
+
+    while (i < text.length) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') {
+            cell += '"';
+            i += 2;
+            continue;
+          }
+          inQuotes = false;
+          i++;
+          continue;
+        }
+        cell += c;
+        i++;
+        continue;
+      }
+      if (c === '"') {
+        inQuotes = true;
+        i++;
+        continue;
+      }
+      if (c === ",") {
+        row.push(cell);
+        cell = "";
+        i++;
+        continue;
+      }
+      if (c === "\r") {
+        i++;
+        continue;
+      }
+      if (c === "\n") {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+        i++;
+        continue;
+      }
+      cell += c;
+      i++;
+    }
+    row.push(cell);
+    if (row.length > 1 || row[0] !== "") {
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  function looksLikeRecordSheetRows(rows) {
+    if (!rows || rows.length < 2) return false;
+    const r0 = rows[0];
+    const a0 = String(r0[0] ?? "").trim();
+    const b0 = String(r0[1] ?? "").trim();
+    if (b0.includes("日付")) return true;
+    if (a0 === "連番" || a0.includes("連番")) return true;
+    return false;
+  }
+
+  function readRecordRowsFromCsv(rows) {
+    const start = looksLikeRecordSheetRows(rows) ? 1 : 0;
+    return rows.slice(start);
+  }
+
+  function normalizeParticipantDisplay(s) {
+    let t = String(s == null ? "" : s);
+    t = t.replace(/\u200b|\u200c|\u200d|\ufeff/g, "");
+    t = t.replace(/\u00a0|\u3000/g, " ");
+    t = t.replace(/\s+/g, " ").trim();
+    return t;
+  }
+
+  function buildSessionGroupsFromRows(rows) {
+    const groups = {};
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const dateRaw = String(row[1] || "").trim();
+      if (!dateRaw) continue;
+      const placeRaw = String(row[2] || "").trim() || "—";
+      const key = dateRaw + "\t" + placeRaw;
+
+      if (!groups[key]) {
+        groups[key] = {
+          dateRaw: dateRaw,
+          place: placeRaw,
+          bySeq: {},
+        };
+      }
+
+      const seq = parseInt(String(row[0] || "").trim(), 10);
+      const slotIndex =
+        Number.isFinite(seq) && seq >= 1 && seq <= MAX_SLOTS ? seq - 1 : null;
+      if (slotIndex === null) continue;
+
+      groups[key].bySeq[slotIndex] = {
+        display: normalizeParticipantDisplay(row[3]),
+      };
+    }
+
+    return groups;
+  }
+
+  function groupsToSlotsArray(bySeq) {
+    const slots = [];
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      if (bySeq[i]) {
+        slots.push(bySeq[i]);
+      } else {
+        slots.push({ display: "" });
+      }
+    }
+    return slots;
+  }
+
+  function detectSessionType(bySeq) {
+    for (let i = 3; i < MAX_SLOTS; i++) {
+      if (bySeq[i]) return "individual";
+    }
+    return "team";
+  }
+
+  function getTeamMaxSlots(bySeq) {
+    let max = 0;
+    for (let i = 0; i < MAX_TEAM_SLOTS; i++) {
+      if (bySeq[i]) max = i + 1;
+    }
+    return max || 1;
+  }
+
+  function countFilledSlotsForSession(slots, sessionType, maxSlots) {
+    const limit = sessionType === "team" ? maxSlots || MAX_TEAM_SLOTS : MAX_SLOTS;
+    let n = 0;
+    for (let i = 0; i < limit; i++) {
+      if (slots[i] && normalizeParticipantDisplay(slots[i].display)) n++;
+    }
+    return n;
+  }
+
+  function stripTime(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function formatDateIso(d) {
+    const y = d.getFullYear();
+    const m = ("0" + (d.getMonth() + 1)).slice(-2);
+    const day = ("0" + d.getDate()).slice(-2);
+    return y + "-" + m + "-" + day;
+  }
+
+  function getTodayLocal() {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  function parseRecordDate(dateValue) {
+    if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+      return stripTime(dateValue);
+    }
+    const label = String(dateValue == null ? "" : dateValue).trim();
+    if (!label) return null;
+
+    const full = label.match(/^(\d{4})[\/\.\-年](\d{1,2})[\/\.\-月](\d{1,2})/);
+    if (full) {
+      return stripTime(
+        new Date(parseInt(full[1], 10), parseInt(full[2], 10) - 1, parseInt(full[3], 10)),
+      );
+    }
+
+    const t = label
+      .replace(/\([^)]*\)/g, "")
+      .replace(/（[^）]*）/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const jp = t.match(/(\d{1,2})月(\d{1,2})日/);
+    if (jp) {
+      const y = getTodayLocal().getFullYear();
+      return stripTime(new Date(y, parseInt(jp[1], 10) - 1, parseInt(jp[2], 10)));
+    }
+
+    const md = t.match(/(\d{1,2})[\/．\.](\d{1,2})/);
+    if (md) {
+      const yy = getTodayLocal().getFullYear();
+      return stripTime(new Date(yy, parseInt(md[1], 10) - 1, parseInt(md[2], 10)));
+    }
+
+    return null;
+  }
+
+  async function loadSessionsFromCsv() {
+    const text = await fetchSheetText(RECORD_SHEET_NAME);
+    if (!text) {
+      throw new Error(
+        "record シートの取得に失敗しました。スプレッドシートが「リンクを知っている全員が閲覧可」になっているか確認してください。",
+      );
+    }
+
+    const rows = parseCSV(text);
+    const dataRows = readRecordRowsFromCsv(rows);
+    const groups = buildSessionGroupsFromRows(dataRows);
+    const sessions = [];
+
+    for (const key of Object.keys(groups)) {
+      const group = groups[key];
+      const eventDate = parseRecordDate(group.dateRaw);
+      if (!eventDate) continue;
+
+      const sessionType = detectSessionType(group.bySeq);
+      const slots = groupsToSlotsArray(group.bySeq);
+      const maxSlots = sessionType === "team" ? getTeamMaxSlots(group.bySeq) : MAX_SLOTS;
+      const filledCount = countFilledSlotsForSession(slots, sessionType, maxSlots);
+
+      sessions.push({
+        dateIso: formatDateIso(eventDate),
+        place: group.place,
+        filledCount: filledCount,
+      });
+    }
+
+    sessions.sort(function (a, b) {
+      return a.dateIso < b.dateIso ? -1 : a.dateIso > b.dateIso ? 1 : 0;
+    });
+
+    return sessions;
   }
 
   function bootstrapFromSessions(sessions) {
@@ -520,23 +786,32 @@
   async function loadBootstrap() {
     const fallback = { dateIso: todayIso(), place: DEFAULT_PLACE, filledCount: 0 };
     const apiUrl = gasCalendarApiUrl();
-    if (!apiUrl) {
-      showError("GAS URL が未設定です。手動で入力して利用できます。");
-      applyBootstrap(fallback);
-      showReady();
-      return;
-    }
-    try {
-      const res = await fetch(apiUrl);
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const data = await res.json();
-      if (!data || data.ok === false) {
-        throw new Error((data && data.error) || "データの取得に失敗しました。");
+
+    if (apiUrl) {
+      try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        if (!data || data.ok === false) {
+          throw new Error((data && data.error) || "データの取得に失敗しました。");
+        }
+        applyBootstrap(bootstrapFromSessions(data.sessions || []));
+        showReady();
+        return;
+      } catch (_) {
+        /* GAS 失敗時は CSV へフォールバック */
       }
-      applyBootstrap(bootstrapFromSessions(data.sessions || []));
+    }
+
+    try {
+      const sessions = await loadSessionsFromCsv();
+      applyBootstrap(bootstrapFromSessions(sessions));
       showReady();
     } catch (err) {
-      showError(formatUserError(err) + " — 手動で入力して利用できます。");
+      const msg = apiUrl
+        ? formatUserError(err) + " — 手動で入力して利用できます。"
+        : "GAS URL が未設定です。手動で入力して利用できます。";
+      showError(msg);
       applyBootstrap(fallback);
       showReady();
     }
