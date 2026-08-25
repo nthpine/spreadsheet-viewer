@@ -307,6 +307,14 @@ body.cyber-cal .month-title {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   width: 100%;
+  column-gap: 1px;
+  padding: 0 1px;
+  background: var(--border);
+}
+
+.days {
+  row-gap: 1px;
+  padding: 1px;
 }
 
 body.cyber-cal .weekdays span {
@@ -332,7 +340,6 @@ body.cyber-cal .weekdays .sat {
 body.cyber-cal .day-cell {
   min-width: 0;
   min-height: 80px;
-  border: 1px solid var(--border);
   padding: 3px;
   background: #fff;
   overflow: hidden;
@@ -341,14 +348,19 @@ body.cyber-cal .day-cell {
 
 body.cyber-cal .day-cell--empty {
   background: #f3f4f6;
-  border-color: #e5e7eb;
   min-height: 80px;
   pointer-events: none;
+}
+
+body.cyber-cal .day-cell--empty > * {
   opacity: 0.65;
 }
 
 body.cyber-cal .day-cell.past {
   background: #f5f6f8;
+}
+
+body.cyber-cal .day-cell.past > * {
   opacity: 0.85;
 }
 
