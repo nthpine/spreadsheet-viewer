@@ -588,6 +588,8 @@
 
           bySeq: {},
 
+          note: "",
+
         };
 
       }
@@ -595,6 +597,14 @@
 
 
       const seq = parseInt(String(row[0] || "").trim(), 10);
+
+      if (seq === 1) {
+
+        groups[key].note = String(row[7] || "").trim();
+
+      }
+
+
 
       const slotIndex =
 
@@ -848,6 +858,8 @@
 
         filledCount: filledCount,
 
+        note: String(group.note || "").trim(),
+
       });
 
     }
@@ -890,11 +902,13 @@
 
         filledCount: clampFilled(picked.filledCount),
 
+        note: String(picked.note || "").trim(),
+
       };
 
     }
 
-    return { dateIso: iso, place: DEFAULT_PLACE, filledCount: 0 };
+    return { dateIso: iso, place: DEFAULT_PLACE, filledCount: 0, note: "" };
 
   }
 
@@ -1797,6 +1811,14 @@
     if (data.filledCount != null) {
 
       document.getElementById("inputFilled").value = clampFilled(data.filledCount);
+
+    }
+
+    if ("note" in data) {
+
+      const noteEl = document.getElementById("inputNote");
+
+      if (noteEl) noteEl.value = String(data.note);
 
     }
 
