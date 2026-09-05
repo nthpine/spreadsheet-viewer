@@ -37,7 +37,7 @@
     return msg;
   }
   const MAX_PARTICIPANTS = 15;
-  const HARD_MAX_PARTICIPANTS = 30;
+  const HARD_MAX_PARTICIPANTS = 20;
   const MAX_TEAM_SLOTS = 3;
   /** record シート: H列（0-based index 7）以降が練習試合チームのメンバー名 */
   const TEAM_MEMBER_COL_START = 7;
@@ -365,14 +365,16 @@
   }
 
   function getIndividualMaxSlots(bySeq) {
-    let maxIndex = -1;
+    let highestFilled = 0;
     const keys = bySeq && typeof bySeq === "object" ? Object.keys(bySeq) : [];
     for (let k = 0; k < keys.length; k++) {
       const idx = parseInt(keys[k], 10);
-      if (Number.isFinite(idx) && idx > maxIndex) maxIndex = idx;
+      if (!Number.isFinite(idx) || idx < 0) continue;
+      const slot = bySeq[idx];
+      if (!slot || !normalizeParticipantDisplay(slot.display)) continue;
+      if (idx + 1 > highestFilled) highestFilled = idx + 1;
     }
-    const dataDriven = maxIndex >= 0 ? maxIndex + 1 : MAX_PARTICIPANTS;
-    return Math.min(HARD_MAX_PARTICIPANTS, Math.max(MAX_PARTICIPANTS, dataDriven));
+    return Math.min(HARD_MAX_PARTICIPANTS, Math.max(MAX_PARTICIPANTS, highestFilled));
   }
 
   function slotsToBySeq(slots) {
@@ -807,7 +809,7 @@
       throw new Error("GAS ウェブアプリ URL が設定されていません。");
     }
 
-    const cacheKey = bundleRecordCacheKey() + "_gas_v3";
+    const cacheKey = bundleRecordCacheKey() + "_gas_v4";
     if (!skipCache) {
       const cached = await readBundleCache(cacheKey);
       if (cached && cached.ok && cached.range && Array.isArray(cached.sessions)) {
