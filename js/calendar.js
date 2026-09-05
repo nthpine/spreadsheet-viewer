@@ -44,6 +44,15 @@
   function getIndividualMaxSlots(dateIso) {
     return INDIVIDUAL_CAPACITY_OVERRIDES[dateIso] || MAX_PARTICIPANTS;
   }
+
+  function individualGroupNeedsCapacityOverlay(group) {
+    if (!group || group.sessionType === "team") return false;
+    const expected = getIndividualMaxSlots(group.dateIso || "");
+    const slots = group.slots || [];
+    return (
+      expected > (group.maxSlots || MAX_PARTICIPANTS) || slots.length < expected
+    );
+  }
   /** record シート: H列（0-based index 7）以降が練習試合チームのメンバー名 */
   const TEAM_MEMBER_COL_START = 7;
   const TEAM_SLOT_LABELS = ["チームA", "チームB", "チームC"];
@@ -690,9 +699,11 @@
           ? getIndividualMaxSlots(group.dateIso)
           : group.maxSlots || MAX_PARTICIPANTS;
     const filledCount =
-      group.filledCount != null
-        ? group.filledCount
-        : countFilledSlotsForSession(slots, sessionType, maxSlots);
+      sessionType === "individual" && group.dateIso
+        ? countFilledSlotsForSession(slots, sessionType, maxSlots)
+        : group.filledCount != null
+          ? group.filledCount
+          : countFilledSlotsForSession(slots, sessionType, maxSlots);
     return Object.assign({}, group, {
       sessionKey: group.sessionKey || sessionKey,
       sessionType: sessionType,
@@ -726,9 +737,7 @@
       });
     });
     const needsCapacityRepair = Object.keys(data.groupByKey).some(function (key) {
-      const group = data.groupByKey[key];
-      if (!group || group.sessionType === "team" || !group.dateIso) return false;
-      return getIndividualMaxSlots(group.dateIso) !== (group.maxSlots || MAX_PARTICIPANTS);
+      return individualGroupNeedsCapacityOverlay(data.groupByKey[key]);
     });
     if (!needsRepair && !needsMembers && !needsCapacityRepair) return data;
 
@@ -746,8 +755,7 @@
             : getIndividualMaxSlots(group.dateIso || "");
         const shouldRebuildSlots =
           !group.sessionType ||
-          (sessionType === "individual" &&
-            getIndividualMaxSlots(group.dateIso || "") !== (group.maxSlots || MAX_PARTICIPANTS));
+          (sessionType === "individual" && individualGroupNeedsCapacityOverlay(group));
 
         if (shouldRebuildSlots) {
           group.sessionType = sessionType;
@@ -768,7 +776,34 @@
         });
       }
     } catch (_) {
-      // record CSV が取れない場合は slots ベースの normalize に任せる
+      Object.keys(data.groupByKey).forEach(function (key) {
+        const group = data.groupByKey[key];
+        if (!group || group.sessionType === "team" || !group.dateIso) return;
+        if (!individualGroupNeedsCapacityOverlay(group)) return;
+        const maxSlots = getIndividualMaxSlots(group.dateIso);
+        group.maxSlots = maxSlots;
+        if (!Array.isArray(group.slots)) group.slots = [];
+        while (group.slots.length < maxSlots) {
+          group.slots.push({
+            seq: group.slots.length + 1,
+            display: "",
+            isFirst: false,
+            isFemale: false,
+            isUnconfirmed: false,
+            members: [],
+          });
+        }
+        group.filledCount = countFilledSlotsForSession(group.slots, "individual", maxSlots);
+      });
+      if (Array.isArray(data.sessions)) {
+        data.sessions.forEach(function (session) {
+          const group = data.groupByKey[session.sessionKey];
+          if (!group) return;
+          session.sessionType = group.sessionType;
+          session.maxSlots = group.maxSlots;
+          session.filledCount = group.filledCount;
+        });
+      }
     }
     return data;
   }
@@ -779,11 +814,12 @@
       throw new Error("GAS ウェブアプリ URL が設定されていません。");
     }
 
-    const cacheKey = bundleRecordCacheKey() + "_gas_v2";
+    const cacheKey = bundleRecordCacheKey() + "_gas_v3";
     if (!skipCache) {
       const cached = await readBundleCache(cacheKey);
       if (cached && cached.ok && cached.range && Array.isArray(cached.sessions)) {
-        return applyGasCalendarPayload(cached);
+        const repaired = await repairGasPayloadMetadata(cached);
+        return applyGasCalendarPayload(repaired);
       }
     }
 

@@ -902,6 +902,27 @@
 
 
 
+  function mergeInviteSessions(gasSessions, csvSessions) {
+    const csvByKey = {};
+    (csvSessions || []).forEach(function (s) {
+      if (!s || !s.dateIso) return;
+      const placeKey = normalizePlaceName(s.place || "");
+      csvByKey[s.dateIso + "\t" + placeKey] = s;
+      if (!csvByKey[s.dateIso]) csvByKey[s.dateIso] = s;
+    });
+
+    return (gasSessions || []).map(function (gas) {
+      if (!gas || !gas.dateIso) return gas;
+      const placeKey = normalizePlaceName(gas.place || "");
+      const csv = csvByKey[gas.dateIso + "\t" + placeKey] || csvByKey[gas.dateIso];
+      if (!csv) return gas;
+      return Object.assign({}, gas, {
+        filledCount: csv.filledCount,
+        note: csv.note != null ? csv.note : gas.note,
+      });
+    });
+  }
+
   function bootstrapFromSessions(sessions) {
 
     const iso = todayIso();
@@ -1996,7 +2017,15 @@
 
         }
 
-        applyBootstrap(bootstrapFromSessions(data.sessions || []));
+        const gasSessions = data.sessions || [];
+        try {
+          const csvSessions = await loadSessionsFromCsv();
+          applyBootstrap(
+            bootstrapFromSessions(mergeInviteSessions(gasSessions, csvSessions)),
+          );
+        } catch (_) {
+          applyBootstrap(bootstrapFromSessions(gasSessions));
+        }
 
         showReady();
 
