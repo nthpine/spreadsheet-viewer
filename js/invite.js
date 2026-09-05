@@ -16,6 +16,10 @@
 
   const MAX_SLOTS = 15;
 
+  const MAX_SLOTS_HARD_CAP = 16;
+
+  const INDIVIDUAL_CAPACITY_OVERRIDES = { "2026-09-09": 16 };
+
   const MAX_TEAM_SLOTS = 3;
 
   const DEFAULT_PLACE = "中央体育館";
@@ -246,21 +250,33 @@
 
 
 
-  function clampFilled(n) {
+  function getMaxSlotsForDate(dateIso) {
 
-    const v = parseInt(String(n), 10);
-
-    if (!Number.isFinite(v)) return 0;
-
-    return Math.min(MAX_SLOTS, Math.max(0, v));
+    return INDIVIDUAL_CAPACITY_OVERRIDES[dateIso] || MAX_SLOTS;
 
   }
 
 
 
-  function getRecruitingCount(filled) {
+  function clampFilled(n, maxSlots) {
 
-    return Math.max(0, MAX_SLOTS - clampFilled(filled));
+    const cap = maxSlots != null ? maxSlots : MAX_SLOTS;
+
+    const v = parseInt(String(n), 10);
+
+    if (!Number.isFinite(v)) return 0;
+
+    return Math.min(cap, Math.max(0, v));
+
+  }
+
+
+
+  function getRecruitingCount(filled, maxSlots) {
+
+    const cap = maxSlots != null ? maxSlots : MAX_SLOTS;
+
+    return Math.max(0, cap - clampFilled(filled, cap));
 
   }
 
@@ -608,7 +624,7 @@
 
       const slotIndex =
 
-        Number.isFinite(seq) && seq >= 1 && seq <= MAX_SLOTS ? seq - 1 : null;
+        Number.isFinite(seq) && seq >= 1 && seq <= MAX_SLOTS_HARD_CAP ? seq - 1 : null;
 
       if (slotIndex === null) continue;
 
@@ -630,11 +646,13 @@
 
 
 
-  function groupsToSlotsArray(bySeq) {
+  function groupsToSlotsArray(bySeq, maxSlots) {
+
+    const limit = maxSlots != null ? maxSlots : MAX_SLOTS;
 
     const slots = [];
 
-    for (let i = 0; i < MAX_SLOTS; i++) {
+    for (let i = 0; i < limit; i++) {
 
       if (bySeq[i]) {
 
@@ -656,7 +674,7 @@
 
   function detectSessionType(bySeq) {
 
-    for (let i = 3; i < MAX_SLOTS; i++) {
+    for (let i = 3; i < MAX_SLOTS_HARD_CAP; i++) {
 
       if (bySeq[i]) return "individual";
 
@@ -686,7 +704,9 @@
 
   function countFilledSlotsForSession(slots, sessionType, maxSlots) {
 
-    const limit = sessionType === "team" ? maxSlots || MAX_TEAM_SLOTS : MAX_SLOTS;
+    const limit =
+
+      sessionType === "team" ? maxSlots || MAX_TEAM_SLOTS : maxSlots || MAX_SLOTS;
 
     let n = 0;
 
@@ -842,9 +862,11 @@
 
       const sessionType = detectSessionType(group.bySeq);
 
-      const slots = groupsToSlotsArray(group.bySeq);
+      const maxSlots =
 
-      const maxSlots = sessionType === "team" ? getTeamMaxSlots(group.bySeq) : MAX_SLOTS;
+        sessionType === "team" ? getTeamMaxSlots(group.bySeq) : getMaxSlotsForDate(formatDateIso(eventDate));
+
+      const slots = groupsToSlotsArray(group.bySeq, maxSlots);
 
       const filledCount = countFilledSlotsForSession(slots, sessionType, maxSlots);
 
@@ -880,6 +902,27 @@
 
 
 
+  function mergeInviteSessions(gasSessions, csvSessions) {
+    const csvByKey = {};
+    (csvSessions || []).forEach(function (s) {
+      if (!s || !s.dateIso) return;
+      const placeKey = normalizePlaceName(s.place || "");
+      csvByKey[s.dateIso + "\t" + placeKey] = s;
+      if (!csvByKey[s.dateIso]) csvByKey[s.dateIso] = s;
+    });
+
+    return (gasSessions || []).map(function (gas) {
+      if (!gas || !gas.dateIso) return gas;
+      const placeKey = normalizePlaceName(gas.place || "");
+      const csv = csvByKey[gas.dateIso + "\t" + placeKey] || csvByKey[gas.dateIso];
+      if (!csv) return gas;
+      return Object.assign({}, gas, {
+        filledCount: csv.filledCount,
+        note: csv.note != null ? csv.note : gas.note,
+      });
+    });
+  }
+
   function bootstrapFromSessions(sessions) {
 
     const iso = todayIso();
@@ -900,7 +943,7 @@
 
             : DEFAULT_PLACE,
 
-        filledCount: clampFilled(picked.filledCount),
+        filledCount: clampFilled(picked.filledCount, getMaxSlotsForDate(picked.dateIso)),
 
         note: String(picked.note || "").trim(),
 
@@ -918,11 +961,13 @@
 
     const dateIso = document.getElementById("inputDate").value;
 
+    const maxSlots = getMaxSlotsForDate(dateIso);
+
     const place = document.getElementById("inputPlace").value.trim();
 
-    const filled = clampFilled(document.getElementById("inputFilled").value);
+    const filled = clampFilled(document.getElementById("inputFilled").value, maxSlots);
 
-    const recruiting = getRecruitingCount(filled);
+    const recruiting = getRecruitingCount(filled, maxSlots);
 
     const botPostEl = document.getElementById("inputBotPost");
 
@@ -956,7 +1001,49 @@
 
 
 
+  function updateFilledInputLimits() {
+
+    const dateIso = document.getElementById("inputDate").value;
+
+    const maxSlots = getMaxSlotsForDate(dateIso);
+
+    const filledEl = document.getElementById("inputFilled");
+
+    const labelEl = document.getElementById("labelFilled");
+
+    const recruitLabelEl = document.getElementById("labelRecruit");
+
+    if (filledEl) {
+
+      filledEl.max = String(maxSlots);
+
+      if (parseInt(filledEl.value, 10) > maxSlots) {
+
+        filledEl.value = String(maxSlots);
+
+      }
+
+    }
+
+    if (labelEl) {
+
+      labelEl.textContent = "現在集まっている人数（0〜" + maxSlots + "）";
+
+    }
+
+    if (recruitLabelEl) {
+
+      recruitLabelEl.textContent = "募集人数（定員" + maxSlots + "人 − 現在人数）";
+
+    }
+
+  }
+
+
+
   function updateRecruitDisplay() {
+
+    updateFilledInputLimits();
 
     document.getElementById("recruitValue").textContent = getFormState().recruitText;
 
@@ -1810,7 +1897,9 @@
 
     if (data.filledCount != null) {
 
-      document.getElementById("inputFilled").value = clampFilled(data.filledCount);
+      const maxSlots = getMaxSlotsForDate(data.dateIso || document.getElementById("inputDate").value);
+
+      document.getElementById("inputFilled").value = clampFilled(data.filledCount, maxSlots);
 
     }
 
@@ -1928,7 +2017,15 @@
 
         }
 
-        applyBootstrap(bootstrapFromSessions(data.sessions || []));
+        const gasSessions = data.sessions || [];
+        try {
+          const csvSessions = await loadSessionsFromCsv();
+          applyBootstrap(
+            bootstrapFromSessions(mergeInviteSessions(gasSessions, csvSessions)),
+          );
+        } catch (_) {
+          applyBootstrap(bootstrapFromSessions(gasSessions));
+        }
 
         showReady();
 

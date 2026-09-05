@@ -37,7 +37,26 @@
     return msg;
   }
   const MAX_PARTICIPANTS = 15;
+  const MAX_PARTICIPANTS_HARD_CAP = 16;
+  const INDIVIDUAL_CAPACITY_OVERRIDES = { "2026-09-09": 16 };
   const MAX_TEAM_SLOTS = 3;
+
+  function getIndividualMaxSlots(dateIso) {
+    return INDIVIDUAL_CAPACITY_OVERRIDES[dateIso] || MAX_PARTICIPANTS;
+  }
+
+  function individualGroupNeedsCapacityOverlay(group) {
+    if (!group || group.sessionType === "team") return false;
+    const expected = getIndividualMaxSlots(group.dateIso || "");
+    const slots = Array.isArray(group.slots) ? group.slots : [];
+    if (expected > (group.maxSlots || MAX_PARTICIPANTS)) return true;
+    if (slots.length < expected) return true;
+    if (expected > MAX_PARTICIPANTS) {
+      const last = slots[expected - 1];
+      if (!last || !String(last.display || "").trim()) return true;
+    }
+    return false;
+  }
   /** record シート: H列（0-based index 7）以降が練習試合チームのメンバー名 */
   const TEAM_MEMBER_COL_START = 7;
   const TEAM_SLOT_LABELS = ["チームA", "チームB", "チームC"];
@@ -324,7 +343,7 @@
 
       const seq = parseInt(String(row[0] || "").trim(), 10);
       const slotIndex =
-        Number.isFinite(seq) && seq >= 1 && seq <= MAX_PARTICIPANTS ? seq - 1 : null;
+        Number.isFinite(seq) && seq >= 1 && seq <= MAX_PARTICIPANTS_HARD_CAP ? seq - 1 : null;
       if (slotIndex === null) continue;
 
       const parsed = parseParticipantCell(row[3]);
@@ -363,9 +382,10 @@
     return members;
   }
 
-  function groupsToSlotsArray(bySeq) {
+  function groupsToSlotsArray(bySeq, maxSlots) {
+    const limit = maxSlots || MAX_PARTICIPANTS;
     const slots = [];
-    for (let i = 0; i < MAX_PARTICIPANTS; i++) {
+    for (let i = 0; i < limit; i++) {
       if (bySeq[i]) {
         slots.push(bySeq[i]);
       } else {
@@ -383,7 +403,7 @@
   }
 
   function detectSessionType(bySeq) {
-    for (let i = 3; i < MAX_PARTICIPANTS; i++) {
+    for (let i = 3; i < MAX_PARTICIPANTS_HARD_CAP; i++) {
       if (bySeq[i]) return "individual";
     }
     return "team";
@@ -401,7 +421,7 @@
     const limit =
       sessionType === "team"
         ? maxSlots || MAX_TEAM_SLOTS
-        : MAX_PARTICIPANTS;
+        : maxSlots || MAX_PARTICIPANTS;
     let n = 0;
     for (let i = 0; i < limit; i++) {
       if (slots[i] && normalizeParticipantDisplay(slots[i].display)) n++;
@@ -543,9 +563,11 @@
 
   function enrichSessionGroup(group, eventDate) {
     const sessionType = detectSessionType(group.bySeq);
-    const slots = groupsToSlotsArray(group.bySeq);
     const maxSlots =
-      sessionType === "team" ? getTeamMaxSlots(group.bySeq) : MAX_PARTICIPANTS;
+      sessionType === "team"
+        ? getTeamMaxSlots(group.bySeq)
+        : getIndividualMaxSlots(formatDateIso(eventDate));
+    const slots = groupsToSlotsArray(group.bySeq, maxSlots);
     const filledCount = countFilledSlotsForSession(slots, sessionType, maxSlots);
     let hasFirst = false;
     let hasUnconfirmed = false;
@@ -675,12 +697,17 @@
     });
     const sessionType = group.sessionType === "team" ? "team" : "individual";
     const maxSlots =
-      group.maxSlots ||
-      (sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
+      sessionType === "team"
+        ? group.maxSlots || MAX_TEAM_SLOTS
+        : group.dateIso
+          ? getIndividualMaxSlots(group.dateIso)
+          : group.maxSlots || MAX_PARTICIPANTS;
     const filledCount =
-      group.filledCount != null
-        ? group.filledCount
-        : countFilledSlotsForSession(slots, sessionType, maxSlots);
+      sessionType === "individual" && group.dateIso
+        ? countFilledSlotsForSession(slots, sessionType, maxSlots)
+        : group.filledCount != null
+          ? group.filledCount
+          : countFilledSlotsForSession(slots, sessionType, maxSlots);
     return Object.assign({}, group, {
       sessionKey: group.sessionKey || sessionKey,
       sessionType: sessionType,
@@ -713,7 +740,10 @@
         return !Array.isArray(slot.members);
       });
     });
-    if (!needsRepair && !needsMembers) return data;
+    const needsCapacityRepair = Object.keys(data.groupByKey).some(function (key) {
+      return individualGroupNeedsCapacityOverlay(data.groupByKey[key]);
+    });
+    if (!needsRepair && !needsMembers && !needsCapacityRepair) return data;
 
     try {
       const rows = await fetchRecordRows(true);
@@ -722,19 +752,22 @@
         const source = built[key];
         if (!source) return;
         const group = data.groupByKey[key];
-        mergeTeamMembersIntoSlots(group.slots, source.bySeq);
-        if (!group.sessionType) {
-          const sessionType = detectSessionType(source.bySeq);
+        const sessionType = group.sessionType || detectSessionType(source.bySeq);
+        const maxSlots =
+          sessionType === "team"
+            ? getTeamMaxSlots(source.bySeq)
+            : getIndividualMaxSlots(group.dateIso || "");
+        const shouldRebuildSlots =
+          !group.sessionType ||
+          (sessionType === "individual" && individualGroupNeedsCapacityOverlay(group));
+
+        if (shouldRebuildSlots) {
           group.sessionType = sessionType;
-          group.maxSlots =
-            sessionType === "team"
-              ? getTeamMaxSlots(source.bySeq)
-              : MAX_PARTICIPANTS;
-          group.filledCount = countFilledSlotsForSession(
-            group.slots || [],
-            sessionType,
-            group.maxSlots,
-          );
+          group.maxSlots = maxSlots;
+          group.slots = groupsToSlotsArray(source.bySeq, maxSlots);
+          group.filledCount = countFilledSlotsForSession(group.slots, sessionType, maxSlots);
+        } else {
+          mergeTeamMembersIntoSlots(group.slots, source.bySeq);
         }
       });
       if (Array.isArray(data.sessions)) {
@@ -747,7 +780,34 @@
         });
       }
     } catch (_) {
-      // record CSV が取れない場合は slots ベースの normalize に任せる
+      Object.keys(data.groupByKey).forEach(function (key) {
+        const group = data.groupByKey[key];
+        if (!group || group.sessionType === "team" || !group.dateIso) return;
+        if (!individualGroupNeedsCapacityOverlay(group)) return;
+        const maxSlots = getIndividualMaxSlots(group.dateIso);
+        group.maxSlots = maxSlots;
+        if (!Array.isArray(group.slots)) group.slots = [];
+        while (group.slots.length < maxSlots) {
+          group.slots.push({
+            seq: group.slots.length + 1,
+            display: "",
+            isFirst: false,
+            isFemale: false,
+            isUnconfirmed: false,
+            members: [],
+          });
+        }
+        group.filledCount = countFilledSlotsForSession(group.slots, "individual", maxSlots);
+      });
+      if (Array.isArray(data.sessions)) {
+        data.sessions.forEach(function (session) {
+          const group = data.groupByKey[session.sessionKey];
+          if (!group) return;
+          session.sessionType = group.sessionType;
+          session.maxSlots = group.maxSlots;
+          session.filledCount = group.filledCount;
+        });
+      }
     }
     return data;
   }
@@ -758,11 +818,12 @@
       throw new Error("GAS ウェブアプリ URL が設定されていません。");
     }
 
-    const cacheKey = bundleRecordCacheKey() + "_gas_v2";
+    const cacheKey = bundleRecordCacheKey() + "_gas_v3";
     if (!skipCache) {
       const cached = await readBundleCache(cacheKey);
       if (cached && cached.ok && cached.range && Array.isArray(cached.sessions)) {
-        return applyGasCalendarPayload(cached);
+        const repaired = await repairGasPayloadMetadata(cached);
+        return applyGasCalendarPayload(repaired);
       }
     }
 
@@ -1367,7 +1428,9 @@
     const list = $("participantList");
     list.innerHTML = "";
     const isTeam = sessionType === "team";
-    const slotLimit = isTeam ? maxSlots || MAX_TEAM_SLOTS : slots.length;
+    const slotLimit = isTeam
+      ? maxSlots || MAX_TEAM_SLOTS
+      : maxSlots || MAX_PARTICIPANTS;
 
     for (let index = 0; index < slotLimit; index++) {
       const slot = slots[index] || {

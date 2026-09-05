@@ -46,7 +46,7 @@
           <input type="text" id="inputPlace" placeholder="例: 中央体育館" />
         </div>
         <div class="invite-field">
-          <label for="inputFilled">現在集まっている人数（0〜15）</label>
+          <label for="inputFilled" id="labelFilled">現在集まっている人数（0〜15）</label>
           <input type="number" id="inputFilled" min="0" max="15" step="1" value="0" />
         </div>
         <div class="invite-field invite-field--checkbox">
@@ -61,7 +61,7 @@
         </div>
         <div class="recruit-display" aria-live="polite">
           <div class="value" id="recruitValue">15名募集中</div>
-          <div class="label">募集人数（定員15人 − 現在人数）</div>
+          <div class="label" id="labelRecruit">募集人数（定員15人 − 現在人数）</div>
         </div>
       </section>
 
