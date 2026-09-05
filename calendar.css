@@ -646,6 +646,24 @@ body.cyber-cal .event-chip .chip-place-name {
   display: none;
 }
 
+.modal--lineup .lineup-header-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.modal--lineup .lineup-note {
+  flex: 0 1 auto;
+  align-self: flex-start;
+  margin: 0;
+  padding-top: 0.15rem;
+  max-width: 50%;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.72);
+  word-break: break-word;
+}
+
 .lineup-date-block {
   display: flex;
   align-items: flex-end;
@@ -1018,6 +1036,10 @@ body.cyber-cal .event-chip .chip-place-name {
 
 .modal--lineup.modal--lineup-team .lineup-header {
   color: #1e1b4b;
+}
+
+.modal--lineup.modal--lineup-team .lineup-note {
+  color: rgba(30, 27, 75, 0.72);
 }
 
 .modal--lineup.modal--lineup-team .lineup-year {

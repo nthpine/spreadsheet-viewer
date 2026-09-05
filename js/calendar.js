@@ -320,10 +320,14 @@
           place: placeRaw,
           sessionKey: key,
           bySeq: {},
+          note: "",
         };
       }
 
       const seq = parseInt(String(row[0] || "").trim(), 10);
+      if (seq === 1) {
+        groups[key].note = String(row[7] || "").trim();
+      }
       const slotIndex =
         Number.isFinite(seq) && seq >= 1 && seq <= HARD_MAX_PARTICIPANTS ? seq - 1 : null;
       if (slotIndex === null) continue;
@@ -595,6 +599,7 @@
       hasFirst: hasFirst,
       hasUnconfirmed: hasUnconfirmed,
       slots: slots,
+      note: String(group.note || "").trim(),
     };
   }
 
@@ -636,6 +641,7 @@
         sessionType: group.sessionType,
         sessionKey: group.sessionKey,
         mapUrl: group.mapUrl || "",
+        note: String(group.note || "").trim(),
       },
       slots: group.slots,
     };
@@ -714,6 +720,7 @@
       filledCount: filledCount,
       slots: slots,
       mapUrl: group.mapUrl || "",
+      note: String(group.note || "").trim(),
     });
   }
 
@@ -1223,6 +1230,10 @@
     });
     if (local) {
       const groupMeta = STATE.groupByKey[sessionKey];
+      const note =
+        (groupMeta && groupMeta.note) ||
+        (local && local.note) ||
+        "";
       setModalHeader(
         local.dateLabel,
         local.place,
@@ -1230,6 +1241,7 @@
         local.maxSlots,
         local.sessionType,
         groupMeta && groupMeta.mapUrl,
+        note,
       );
     }
 
@@ -1275,7 +1287,7 @@
     return buildFallbackMapUrl_(place);
   }
 
-  function setModalHeader(dateLabel, place, filledCount, maxSlots, sessionType, mapUrl) {
+  function setModalHeader(dateLabel, place, filledCount, maxSlots, sessionType, mapUrl, note) {
     const isTeam = sessionType === "team";
     const max = maxSlots || (isTeam ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
     const meta = parseLineupDateMeta(dateLabel);
@@ -1317,12 +1329,31 @@
     if (modal) {
       modal.classList.toggle("modal--lineup-team", isTeam);
     }
+    const noteEl = $("modalNote");
+    const noteText = String(note || "").trim();
+    if (noteEl) {
+      if (noteText) {
+        noteEl.textContent = noteText;
+        noteEl.hidden = false;
+      } else {
+        noteEl.textContent = "";
+        noteEl.hidden = true;
+      }
+    }
   }
 
   function onDetailLoaded(data) {
     const s = data.session;
     const sessionType = s.sessionType || "individual";
-    setModalHeader(s.dateLabel, s.place, s.filledCount, s.maxSlots, sessionType, s.mapUrl);
+    setModalHeader(
+      s.dateLabel,
+      s.place,
+      s.filledCount,
+      s.maxSlots,
+      sessionType,
+      s.mapUrl,
+      s.note,
+    );
     renderParticipantSlots(data.slots || [], sessionType, s.maxSlots);
   }
 
@@ -1487,6 +1518,11 @@
     $("modalOverlay").setAttribute("aria-hidden", "true");
     const modal = document.querySelector("#modalOverlay .modal--lineup");
     if (modal) modal.classList.remove("modal--lineup-team");
+    const noteEl = $("modalNote");
+    if (noteEl) {
+      noteEl.textContent = "";
+      noteEl.hidden = true;
+    }
     STATE.currentSessionKey = null;
   }
 
