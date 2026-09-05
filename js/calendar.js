@@ -48,10 +48,14 @@
   function individualGroupNeedsCapacityOverlay(group) {
     if (!group || group.sessionType === "team") return false;
     const expected = getIndividualMaxSlots(group.dateIso || "");
-    const slots = group.slots || [];
-    return (
-      expected > (group.maxSlots || MAX_PARTICIPANTS) || slots.length < expected
-    );
+    const slots = Array.isArray(group.slots) ? group.slots : [];
+    if (expected > (group.maxSlots || MAX_PARTICIPANTS)) return true;
+    if (slots.length < expected) return true;
+    if (expected > MAX_PARTICIPANTS) {
+      const last = slots[expected - 1];
+      if (!last || !String(last.display || "").trim()) return true;
+    }
+    return false;
   }
   /** record シート: H列（0-based index 7）以降が練習試合チームのメンバー名 */
   const TEAM_MEMBER_COL_START = 7;
