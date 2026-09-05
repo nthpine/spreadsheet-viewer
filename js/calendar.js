@@ -37,6 +37,7 @@
     return msg;
   }
   const MAX_PARTICIPANTS = 15;
+  const HARD_MAX_PARTICIPANTS = 30;
   const MAX_TEAM_SLOTS = 3;
   /** record シート: H列（0-based index 7）以降が練習試合チームのメンバー名 */
   const TEAM_MEMBER_COL_START = 7;
@@ -324,7 +325,7 @@
 
       const seq = parseInt(String(row[0] || "").trim(), 10);
       const slotIndex =
-        Number.isFinite(seq) && seq >= 1 && seq <= MAX_PARTICIPANTS ? seq - 1 : null;
+        Number.isFinite(seq) && seq >= 1 && seq <= HARD_MAX_PARTICIPANTS ? seq - 1 : null;
       if (slotIndex === null) continue;
 
       const parsed = parseParticipantCell(row[3]);
@@ -363,9 +364,30 @@
     return members;
   }
 
-  function groupsToSlotsArray(bySeq) {
+  function getIndividualMaxSlots(bySeq) {
+    let maxIndex = -1;
+    const keys = bySeq && typeof bySeq === "object" ? Object.keys(bySeq) : [];
+    for (let k = 0; k < keys.length; k++) {
+      const idx = parseInt(keys[k], 10);
+      if (Number.isFinite(idx) && idx > maxIndex) maxIndex = idx;
+    }
+    const dataDriven = maxIndex >= 0 ? maxIndex + 1 : MAX_PARTICIPANTS;
+    return Math.min(HARD_MAX_PARTICIPANTS, Math.max(MAX_PARTICIPANTS, dataDriven));
+  }
+
+  function slotsToBySeq(slots) {
+    const bySeq = {};
+    if (!Array.isArray(slots)) return bySeq;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i]) bySeq[i] = slots[i];
+    }
+    return bySeq;
+  }
+
+  function groupsToSlotsArray(bySeq, slotCount) {
+    const count = slotCount != null ? slotCount : getIndividualMaxSlots(bySeq);
     const slots = [];
-    for (let i = 0; i < MAX_PARTICIPANTS; i++) {
+    for (let i = 0; i < count; i++) {
       if (bySeq[i]) {
         slots.push(bySeq[i]);
       } else {
@@ -383,7 +405,7 @@
   }
 
   function detectSessionType(bySeq) {
-    for (let i = 3; i < MAX_PARTICIPANTS; i++) {
+    for (let i = 3; i < HARD_MAX_PARTICIPANTS; i++) {
       if (bySeq[i]) return "individual";
     }
     return "team";
@@ -401,7 +423,7 @@
     const limit =
       sessionType === "team"
         ? maxSlots || MAX_TEAM_SLOTS
-        : MAX_PARTICIPANTS;
+        : maxSlots || slots.length;
     let n = 0;
     for (let i = 0; i < limit; i++) {
       if (slots[i] && normalizeParticipantDisplay(slots[i].display)) n++;
@@ -543,9 +565,9 @@
 
   function enrichSessionGroup(group, eventDate) {
     const sessionType = detectSessionType(group.bySeq);
-    const slots = groupsToSlotsArray(group.bySeq);
     const maxSlots =
-      sessionType === "team" ? getTeamMaxSlots(group.bySeq) : MAX_PARTICIPANTS;
+      sessionType === "team" ? getTeamMaxSlots(group.bySeq) : getIndividualMaxSlots(group.bySeq);
+    const slots = groupsToSlotsArray(group.bySeq, maxSlots);
     const filledCount = countFilledSlotsForSession(slots, sessionType, maxSlots);
     let hasFirst = false;
     let hasUnconfirmed = false;
@@ -676,7 +698,9 @@
     const sessionType = group.sessionType === "team" ? "team" : "individual";
     const maxSlots =
       group.maxSlots ||
-      (sessionType === "team" ? MAX_TEAM_SLOTS : MAX_PARTICIPANTS);
+      (sessionType === "team"
+        ? MAX_TEAM_SLOTS
+        : getIndividualMaxSlots(slotsToBySeq(slots)));
     const filledCount =
       group.filledCount != null
         ? group.filledCount
@@ -713,7 +737,18 @@
         return !Array.isArray(slot.members);
       });
     });
-    if (!needsRepair && !needsMembers) return data;
+    const needsSlotExpansion = Object.keys(data.groupByKey).some(function (key) {
+      const group = data.groupByKey[key];
+      if (group.sessionType === "team") return false;
+      const slots = Array.isArray(group.slots) ? group.slots : [];
+      if (slots.length < MAX_PARTICIPANTS) return false;
+      const filled =
+        group.filledCount != null
+          ? group.filledCount
+          : countFilledSlotsForSession(slots, "individual", MAX_PARTICIPANTS);
+      return slots.length <= MAX_PARTICIPANTS && filled >= MAX_PARTICIPANTS;
+    });
+    if (!needsRepair && !needsMembers && !needsSlotExpansion) return data;
 
     try {
       const rows = await fetchRecordRows(true);
@@ -723,15 +758,29 @@
         if (!source) return;
         const group = data.groupByKey[key];
         mergeTeamMembersIntoSlots(group.slots, source.bySeq);
+        const sessionType = group.sessionType || detectSessionType(source.bySeq);
+        const individualExpected = getIndividualMaxSlots(source.bySeq);
+        const slotsLen = Array.isArray(group.slots) ? group.slots.length : 0;
+        const needsIndividualSlotFix =
+          sessionType !== "team" && individualExpected > slotsLen;
+
         if (!group.sessionType) {
-          const sessionType = detectSessionType(source.bySeq);
           group.sessionType = sessionType;
           group.maxSlots =
-            sessionType === "team"
-              ? getTeamMaxSlots(source.bySeq)
-              : MAX_PARTICIPANTS;
+            sessionType === "team" ? getTeamMaxSlots(source.bySeq) : individualExpected;
+          if (needsIndividualSlotFix) {
+            group.slots = groupsToSlotsArray(source.bySeq, individualExpected);
+          }
           group.filledCount = countFilledSlotsForSession(
             group.slots || [],
+            sessionType,
+            group.maxSlots,
+          );
+        } else if (needsIndividualSlotFix) {
+          group.slots = groupsToSlotsArray(source.bySeq, individualExpected);
+          group.maxSlots = individualExpected;
+          group.filledCount = countFilledSlotsForSession(
+            group.slots,
             sessionType,
             group.maxSlots,
           );
@@ -758,7 +807,7 @@
       throw new Error("GAS ウェブアプリ URL が設定されていません。");
     }
 
-    const cacheKey = bundleRecordCacheKey() + "_gas_v2";
+    const cacheKey = bundleRecordCacheKey() + "_gas_v3";
     if (!skipCache) {
       const cached = await readBundleCache(cacheKey);
       if (cached && cached.ok && cached.range && Array.isArray(cached.sessions)) {
