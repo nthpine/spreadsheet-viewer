@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NORTH PINE 動画投稿告知</title>
+  <meta name="description" content="NORTH PINE 動画投稿告知画像（Instagramストーリー用 1080×1920）" />
+  <link rel="stylesheet" href="video-post.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap"
+    rel="stylesheet"
+  />
+</head>
+<body class="video-post-page">
+  <header>
+    <div class="video-post-header-top">
+      <div>
+        <h1>NORTH PINE 動画投稿告知</h1>
+        <p class="subtitle">Instagramストーリー用（1080×1920）</p>
+      </div>
+      <a href="index.html" class="video-post-back-link">← カレンダー</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="video-post-panel" aria-labelledby="formTitle">
+      <h2 id="formTitle">入力</h2>
+      <div class="video-post-field">
+        <label for="inputDate">投稿日付</label>
+        <input type="date" id="inputDate" />
+      </div>
+    </section>
+
+    <section class="video-post-panel" aria-labelledby="previewTitle">
+      <h2 id="previewTitle">プレビュー</h2>
+      <div class="video-post-preview-wrap">
+        <canvas id="exportCanvas" width="1080" height="1920" aria-hidden="true"></canvas>
+        <img
+          id="saveImage"
+          alt="動画投稿告知画像"
+          width="1080"
+          height="1920"
+        />
+      </div>
+      <div class="video-post-actions">
+        <button type="button" id="btnDownload" class="video-post-btn">PNGダウンロード</button>
+        <button type="button" id="btnOpenTab" class="video-post-btn">新規タブで開く</button>
+        <button type="button" id="btnCopy" class="video-post-btn">クリップボードにコピー</button>
+      </div>
+      <p class="save-hint">
+        スマホ: 画像を<strong>長押し</strong> →「写真を保存」／
+        PC: 画像を<strong>右クリック</strong> →「画像を保存」
+      </p>
+    </section>
+
+    <p id="statusMsg" class="video-post-status" role="status" aria-live="polite"></p>
+  </main>
+
+  <script src="js/video-post.js"></script>
+</body>
+</html>
