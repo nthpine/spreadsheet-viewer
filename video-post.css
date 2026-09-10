@@ -102,6 +102,48 @@ body.video-post-page > header .subtitle {
   border-color: var(--accent-cyan);
 }
 
+.page-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.page-tabs__link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  text-align: center;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.page-tabs__link:hover {
+  border-color: var(--accent-cyan);
+  color: var(--text);
+}
+
+.page-tabs__link[aria-current="page"] {
+  color: var(--text);
+  border-color: var(--accent-cyan);
+  background: rgba(34, 211, 238, 0.12);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.25);
+}
+
+.page-tabs__link:focus-visible {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+}
+
 body.video-post-page > main {
   max-width: 480px;
   margin: 0 auto;
