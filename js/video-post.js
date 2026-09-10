@@ -4,7 +4,7 @@
 (function () {
   "use strict";
 
-  const BACKGROUND_URL = "video-post-background.jpg";
+  const BACKGROUND_URL = "video-post-background-minimal.png";
   const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
   const CANVAS_W = 1080;
   const CANVAS_H = 1920;
@@ -32,12 +32,6 @@
   const MAIN_LINE_Y = 1520;
   const CTA_LINE1_Y = 1660;
   const CTA_LINE2_Y = 1750;
-
-  const BG_GUIDE_ERASE_TOP = 1080;
-  const BG_GUIDE_ERASE_BOTTOM = 1320;
-  const BG_GUIDE_ERASE_X = 140;
-  const BG_GUIDE_ERASE_W = 800;
-  const BG_GUIDE_SAMPLE_MARGIN = 48;
 
   const canvas = document.getElementById("exportCanvas");
   const ctx = canvas.getContext("2d");
@@ -152,63 +146,6 @@
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   }
 
-  function sampleCanvasRgb(x, y) {
-    const px = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
-    return { r: px[0], g: px[1], b: px[2] };
-  }
-
-  function rgbToCss(c) {
-    return "rgb(" + c.r + "," + c.g + "," + c.b + ")";
-  }
-
-  function averageRgb(colors) {
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    for (let i = 0; i < colors.length; i++) {
-      r += colors[i].r;
-      g += colors[i].g;
-      b += colors[i].b;
-    }
-    const n = colors.length;
-    return { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n) };
-  }
-
-  function eraseBackgroundGuide() {
-    const yTop = BG_GUIDE_ERASE_TOP;
-    const yBottom = BG_GUIDE_ERASE_BOTTOM;
-    const x = BG_GUIDE_ERASE_X;
-    const w = BG_GUIDE_ERASE_W;
-    const h = yBottom - yTop;
-    const midY = (yTop + yBottom) / 2;
-    const cx = CANVAS_W / 2;
-
-    const samples = [
-      sampleCanvasRgb(x - BG_GUIDE_SAMPLE_MARGIN, midY),
-      sampleCanvasRgb(x + w + BG_GUIDE_SAMPLE_MARGIN, midY),
-      sampleCanvasRgb(cx, yBottom + BG_GUIDE_SAMPLE_MARGIN),
-    ];
-    const fillColor = averageRgb(samples);
-
-    ctx.save();
-    ctx.fillStyle = rgbToCss(fillColor);
-    ctx.fillRect(x, yTop, w, h);
-
-    const feather = 24;
-    const topGrad = ctx.createLinearGradient(0, yTop - feather, 0, yTop + feather);
-    topGrad.addColorStop(0, "rgba(" + fillColor.r + "," + fillColor.g + "," + fillColor.b + ",0)");
-    topGrad.addColorStop(1, rgbToCss(fillColor));
-    ctx.fillStyle = topGrad;
-    ctx.fillRect(x, yTop - feather, w, feather * 2);
-
-    const bottomGrad = ctx.createLinearGradient(0, yBottom - feather, 0, yBottom + feather);
-    bottomGrad.addColorStop(0, rgbToCss(fillColor));
-    bottomGrad.addColorStop(1, "rgba(" + fillColor.r + "," + fillColor.g + "," + fillColor.b + ",0)");
-    ctx.fillStyle = bottomGrad;
-    ctx.fillRect(x, yBottom - feather, w, feather * 2);
-    ctx.restore();
-  }
-
   function drawStory() {
     if (!bgReady || !fontsReady) return;
 
@@ -216,7 +153,6 @@
     const cx = CANVAS_W / 2;
 
     drawBackground();
-    eraseBackgroundGuide();
 
     ctx.save();
     ctx.beginPath();
