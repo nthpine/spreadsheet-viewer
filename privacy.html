@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ノースパイン Instagram 自動化のプライバシーポリシー</title>
+  <style>
+    body {
+      margin: 0 auto;
+      max-width: 40rem;
+      padding: 1.5rem 1.25rem 3rem;
+      font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      line-height: 1.75;
+      color: #111;
+    }
+    h1 { font-size: 1.35rem; line-height: 1.4; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; }
+    p { margin: 0.85rem 0; }
+    .meta { color: #444; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <h1>ノースパインは、参加の問い合わせに返信するためだけにメッセージを扱う</h1>
+  <p class="meta">対象アプリ: northpine-stories（Meta アプリ）<br>運営: ノースパイン（Instagram @sapporo_northpine）<br>最終更新: 2026年9月12日</p>
+
+  <p>札幌で社会人バスケの個人参加を募集しているノースパインが、Instagram のメッセージとストーリーズ投稿を自動化するときに、どの情報をどこまで扱うかを書いたページです。広告配信や名簿の販売には使いません。</p>
+
+  <h2>問い合わせの本文と送り主の ID を受け取る</h2>
+  <p>誰かが @sapporo_northpine に Instagram のメッセージを送ると、Meta の仕組み経由で次の情報がサーバーに届きます。送り主を識別する Instagram 上の ID、本文、届いた時刻です。名前や電話番号を Instagram から別途引き出す処理はしていません。</p>
+  <p>ストーリーズ用には、公開している参加枠の日付・場所・残り人数をスプレッドシートから読み、画像を GitHub に置いて Instagram に投稿します。</p>
+
+  <h2>人が見てから返す。自動では送らない</h2>
+  <p>届いた本文は、空き枠の案内文を作る材料にします。下書きは Discord に出し、運営が承認したときだけ Instagram へ返信します。却下した内容は送りません。</p>
+  <p>同じメッセージを二度処理しないよう、メッセージ ID をサーバーに残します。承認待ちの下書きも、送るか却下するまで残します。</p>
+
+  <h2>渡す先は Meta と Discord と、自分たちのサーバーだけ</h2>
+  <p>受信と返信は Meta（Instagram）の API を使います。承認の画面は Discord です。処理そのものはノースパインが借りているサーバーの上で動かしています。これ以外の会社へ、問い合わせの本文を渡すことはありません。</p>
+
+  <h2 id="sakujo">残す期間と、消してほしいとき</h2>
+  <p>メッセージ ID と承認待ちの下書きは、運用に必要なあいだだけ置きます。販売用の名簿にはしません。</p>
+  <p>保存した情報の確認や削除を求めるときは、下記へメールしてください。サーバー上の該当記録を消します。Instagram や Discord 側の画面に残った表示は、それぞれのサービスの操作になります。</p>
+
+  <h2>問い合わせ</h2>
+  <p>この取り扱いに関する連絡先は <a href="mailto:snaka24@gmail.com">snaka24@gmail.com</a> です。</p>
+</body>
+</html>
