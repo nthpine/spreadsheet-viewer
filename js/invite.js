@@ -24,9 +24,23 @@
 
   const EVENT_TIME_DISPLAY = "19:15 - 21:45";
 
-  const GUIDE_LINE1 = "参加希望の方は固定ポストを確認後、";
+  const GUIDE_ACTION_HEADLINE_TEXT = "参加希望の方は";
 
-  const GUIDE_LINE2 = "DMまでお願いします！";
+  const GUIDE_ACTION_LINE2_TEXT = "DMに日付を入れて送ってください！";
+
+  const GUIDE_FIRST_BOX_TITLE = "初参加の方は";
+
+  const GUIDE_FIRST_BOX_BODY = "名前・性別・バスケ歴も添えてください";
+
+  const GUIDE_FIRST_BOX_HINT = "（バスケ歴は大体でOK）";
+
+  const GUIDE_ACTION_PX = 15;
+
+  const GUIDE_FIRST_BOX_TITLE_PX = 14;
+
+  const GUIDE_FIRST_BOX_BODY_PX = 13;
+
+  const GUIDE_FIRST_BOX_HINT_PX = 11;
 
   const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -44,7 +58,9 @@
 
 
 
-  const LOGO_DISPLAY_W = 420;
+  const LOGO_DISPLAY_W = 500;
+
+  const BOT_LABEL_SHIFT_X = 140;
 
   const RECRUIT_NUM_PX = 72;
 
@@ -78,9 +94,23 @@
 
   const NOTE_BOX_STROKE = 2 * SCALE;
 
-  const GUIDE_BOX_WIDTH = CANVAS_W - 200;
+  const GUIDE_BOX_WIDTH_MIN = CANVAS_W - 200;
 
   const GUIDE_BOX_PAD_Y = 18 * SCALE;
+
+  const GUIDE_PAD_X = 24 * SCALE;
+
+  const GUIDE_GAP_ACTION_HEAD_TO_DM = 6 * SCALE;
+
+  const GUIDE_GAP_ACTION_TO_FIRST_BOX = 12 * SCALE;
+
+  const GUIDE_FIRST_BOX_PAD_X = 16 * SCALE;
+
+  const GUIDE_FIRST_BOX_PAD_Y = 10 * SCALE;
+
+  const GUIDE_FIRST_BOX_LINE_GAP = 4 * SCALE;
+
+  const GUIDE_FIRST_BOX_BAND_INSET_X = 24 * SCALE;
 
   const GUIDE_BACKGROUND = "rgba(9, 20, 37, 0.48)";
 
@@ -106,7 +136,19 @@
 
   const F_PLACE = "700 " + 28 * SCALE + "px " + FONT_JP;
 
-  const F_FOOTER = "500 " + 14 * SCALE + "px " + FONT_JP;
+  const F_GUIDE_ACTION = "700 " + GUIDE_ACTION_PX * SCALE + "px " + FONT_JP;
+
+  const F_GUIDE_FIRST_BOX_TITLE =
+
+    "700 " + GUIDE_FIRST_BOX_TITLE_PX * SCALE + "px " + FONT_JP;
+
+  const F_GUIDE_FIRST_BOX_BODY =
+
+    "500 " + GUIDE_FIRST_BOX_BODY_PX * SCALE + "px " + FONT_JP;
+
+  const F_GUIDE_FIRST_BOX_HINT =
+
+    "500 " + GUIDE_FIRST_BOX_HINT_PX * SCALE + "px " + FONT_JP;
 
   const F_BOT_POST = "500 " + 11 * SCALE + "px " + FONT_JP;
 
@@ -121,6 +163,16 @@
 
 
   const FOOTER_LINE_H = 14 * SCALE * 1.6;
+
+  const GUIDE_LINE_H_ACTION = GUIDE_ACTION_PX * SCALE * 1.35;
+
+  const GUIDE_FIRST_BOX_LINE_H1 = GUIDE_FIRST_BOX_TITLE_PX * SCALE * 1.35;
+
+  const GUIDE_FIRST_BOX_LINE_H2 = GUIDE_FIRST_BOX_BODY_PX * SCALE * 1.35;
+
+  const GUIDE_FIRST_BOX_LINE_H3 = GUIDE_FIRST_BOX_HINT_PX * SCALE * 1.35;
+
+  const GUIDE_BOTTOM_FROM_FIRST_LINE_Y = 1.5 * FOOTER_LINE_H + GUIDE_BOX_PAD_Y;
 
   const BOT_TEXT_H = 11 * SCALE;
 
@@ -1040,7 +1092,13 @@
 
       document.fonts.load(F_PLACE),
 
-      document.fonts.load(F_FOOTER),
+      document.fonts.load(F_GUIDE_ACTION),
+
+      document.fonts.load(F_GUIDE_FIRST_BOX_TITLE),
+
+      document.fonts.load(F_GUIDE_FIRST_BOX_BODY),
+
+      document.fonts.load(F_GUIDE_FIRST_BOX_HINT),
 
       document.fonts.load(F_BOT_POST),
 
@@ -1108,21 +1166,257 @@
 
 
 
-  function getGuideBox(firstLineY) {
+  function measureGuideActionWidth() {
 
-    const top = firstLineY - FOOTER_LINE_H / 2 - GUIDE_BOX_PAD_Y;
+    ctx.font = F_GUIDE_ACTION;
 
-    const height = FOOTER_LINE_H * 2 + GUIDE_BOX_PAD_Y * 2;
+    const line1W = ctx.measureText(GUIDE_ACTION_HEADLINE_TEXT).width;
+
+    const line2W = ctx.measureText(GUIDE_ACTION_LINE2_TEXT).width;
+
+    return Math.max(line1W, line2W);
+
+  }
+
+
+
+  function measureGuideFirstBoxContentWidth() {
+
+    ctx.font = F_GUIDE_FIRST_BOX_TITLE;
+
+    let w = ctx.measureText(GUIDE_FIRST_BOX_TITLE).width;
+
+    ctx.font = F_GUIDE_FIRST_BOX_BODY;
+
+    w = Math.max(w, ctx.measureText(GUIDE_FIRST_BOX_BODY).width);
+
+    ctx.font = F_GUIDE_FIRST_BOX_HINT;
+
+    w = Math.max(w, ctx.measureText(GUIDE_FIRST_BOX_HINT).width);
+
+    return w;
+
+  }
+
+
+
+  function measureGuideFirstBoxOuterWidth(bandWidth) {
+
+    const contentW = measureGuideFirstBoxContentWidth();
+
+    let outerW = contentW + GUIDE_FIRST_BOX_PAD_X * 2;
+
+    const maxOuter = bandWidth - GUIDE_FIRST_BOX_BAND_INSET_X * 2;
+
+    return Math.min(outerW, maxOuter);
+
+  }
+
+
+
+  function measureGuideFirstBoxHeight() {
+
+    return (
+
+      GUIDE_FIRST_BOX_PAD_Y * 2 +
+
+      GUIDE_FIRST_BOX_LINE_H1 +
+
+      GUIDE_FIRST_BOX_LINE_GAP +
+
+      GUIDE_FIRST_BOX_LINE_H2 +
+
+      GUIDE_FIRST_BOX_LINE_GAP +
+
+      GUIDE_FIRST_BOX_LINE_H3
+
+    );
+
+  }
+
+
+
+  function measureGuideBoxWidth() {
+
+    const actionW = measureGuideActionWidth();
+
+    const firstBoxW = measureGuideFirstBoxContentWidth() + GUIDE_FIRST_BOX_PAD_X * 2;
+
+    const textWidth = Math.max(actionW, firstBoxW);
+
+    let width = Math.max(
+
+      GUIDE_BOX_WIDTH_MIN,
+
+      textWidth + GUIDE_PAD_X * 2,
+
+      firstBoxW + GUIDE_FIRST_BOX_BAND_INSET_X * 2
+
+    );
+
+    const maxWidth = CANVAS_W - 80;
+
+    width = Math.min(width, maxWidth);
+
+    return width;
+
+  }
+
+
+
+  function buildGuideFirstBoxLayout(bandX, bandWidth, bandInnerBottom) {
+
+    const boxH = measureGuideFirstBoxHeight();
+
+    const boxW = measureGuideFirstBoxOuterWidth(bandWidth);
+
+    const boxX = bandX + (bandWidth - boxW) / 2;
+
+    const boxY = bandInnerBottom - boxH;
+
+    let lineY =
+
+      boxY + GUIDE_FIRST_BOX_PAD_Y + GUIDE_FIRST_BOX_LINE_H1 / 2;
+
+    const titleY = lineY;
+
+    lineY +=
+
+      GUIDE_FIRST_BOX_LINE_H1 / 2 +
+
+      GUIDE_FIRST_BOX_LINE_GAP +
+
+      GUIDE_FIRST_BOX_LINE_H2 / 2;
+
+    const bodyY = lineY;
+
+    lineY +=
+
+      GUIDE_FIRST_BOX_LINE_H2 / 2 +
+
+      GUIDE_FIRST_BOX_LINE_GAP +
+
+      GUIDE_FIRST_BOX_LINE_H3 / 2;
+
+    const hintY = lineY;
 
     return {
 
-      x: (CANVAS_W - GUIDE_BOX_WIDTH) / 2,
+      x: boxX,
 
-      y: top,
+      y: boxY,
 
-      width: GUIDE_BOX_WIDTH,
+      width: boxW,
 
-      height: height,
+      height: boxH,
+
+      titleY: titleY,
+
+      bodyY: bodyY,
+
+      hintY: hintY,
+
+    };
+
+  }
+
+
+
+  function getGuideLineYs(anchorFirstLineY) {
+
+    const firstBoxH = measureGuideFirstBoxHeight();
+
+    const targetBottom = anchorFirstLineY + GUIDE_BOTTOM_FROM_FIRST_LINE_Y;
+
+    let headlineY = anchorFirstLineY;
+
+    let dmLineY =
+
+      headlineY +
+
+      GUIDE_LINE_H_ACTION / 2 +
+
+      GUIDE_GAP_ACTION_HEAD_TO_DM +
+
+      GUIDE_LINE_H_ACTION / 2;
+
+    let bottom =
+
+      dmLineY +
+
+      GUIDE_LINE_H_ACTION / 2 +
+
+      GUIDE_GAP_ACTION_TO_FIRST_BOX +
+
+      firstBoxH +
+
+      GUIDE_BOX_PAD_Y;
+
+    if (bottom > targetBottom) {
+
+      const shift = bottom - targetBottom;
+
+      headlineY -= shift;
+
+      dmLineY -= shift;
+
+      bottom = targetBottom;
+
+    }
+
+    const top = headlineY - GUIDE_LINE_H_ACTION / 2 - GUIDE_BOX_PAD_Y;
+
+    const bandWidth = measureGuideBoxWidth();
+
+    const bandX = (CANVAS_W - bandWidth) / 2;
+
+    const innerBottom = bottom - GUIDE_BOX_PAD_Y;
+
+    const firstBox = buildGuideFirstBoxLayout(bandX, bandWidth, innerBottom);
+
+    return {
+
+      headlineY: headlineY,
+
+      dmLineY: dmLineY,
+
+      top: top,
+
+      bottom: bottom,
+
+      height: bottom - top,
+
+      bandWidth: bandWidth,
+
+      bandX: bandX,
+
+      firstBox: firstBox,
+
+    };
+
+  }
+
+
+
+  function getGuideBox(firstLineY) {
+
+    const lines = getGuideLineYs(firstLineY);
+
+    return {
+
+      x: lines.bandX,
+
+      y: lines.top,
+
+      width: lines.bandWidth,
+
+      height: lines.height,
+
+      headlineY: lines.headlineY,
+
+      dmLineY: lines.dmLineY,
+
+      firstBox: lines.firstBox,
 
     };
 
@@ -1134,11 +1428,11 @@
 
     const pos = { noteLines: [] };
 
-    let y = footerFirstLineY;
+    const guideBoxPreview = getGuideBox(footerFirstLineY);
+
+    let y = guideBoxPreview.y;
 
 
-
-    y -= FOOTER_LINE_H / 2 + GUIDE_BOX_PAD_Y;
 
     y -= scaledGap(GAP_FOOTER, gapScale);
 
@@ -1682,23 +1976,125 @@
 
 
 
-  function drawFooter(cx, y, guideBox) {
+  function drawGuideActionBlock(cx, headlineY, dmLineY) {
 
-    if (guideBox) {
+    drawCenteredText(
+
+      cx,
+
+      headlineY,
+
+      GUIDE_ACTION_HEADLINE_TEXT,
+
+      F_GUIDE_ACTION,
+
+      COLOR_MAIN
+
+    );
+
+    drawCenteredText(cx, dmLineY, GUIDE_ACTION_LINE2_TEXT, F_GUIDE_ACTION, COLOR_MAIN);
+
+  }
+
+
+
+  function drawGuideFirstBox(firstBox) {
+
+    if (!firstBox) return;
+
+    ctx.save();
+
+    ctx.strokeStyle = COLOR_ACCENT;
+
+    ctx.lineWidth = NOTE_BOX_STROKE;
+
+    ctx.globalAlpha = 0.9;
+
+    roundedRectPath(
+
+      firstBox.x,
+
+      firstBox.y,
+
+      firstBox.width,
+
+      firstBox.height,
+
+      NOTE_BOX_RADIUS
+
+    );
+
+    ctx.stroke();
+
+    ctx.restore();
+
+    const cx = firstBox.x + firstBox.width / 2;
+
+    drawCenteredText(
+
+      cx,
+
+      firstBox.titleY,
+
+      GUIDE_FIRST_BOX_TITLE,
+
+      F_GUIDE_FIRST_BOX_TITLE,
+
+      COLOR_ACCENT
+
+    );
+
+    drawCenteredText(
+
+      cx,
+
+      firstBox.bodyY,
+
+      GUIDE_FIRST_BOX_BODY,
+
+      F_GUIDE_FIRST_BOX_BODY,
+
+      COLOR_MAIN
+
+    );
+
+    drawCenteredText(
+
+      cx,
+
+      firstBox.hintY,
+
+      GUIDE_FIRST_BOX_HINT,
+
+      F_GUIDE_FIRST_BOX_HINT,
+
+      COLOR_MUTED
+
+    );
+
+  }
+
+
+
+  function drawFooter(cx, anchorFirstLineY, guideBox) {
+
+    const box = guideBox || getGuideBox(anchorFirstLineY);
+
+    if (box) {
 
       ctx.save();
 
       ctx.fillStyle = GUIDE_BACKGROUND;
 
-      ctx.fillRect(guideBox.x, guideBox.y, guideBox.width, guideBox.height);
+      ctx.fillRect(box.x, box.y, box.width, box.height);
 
       ctx.restore();
 
     }
 
-    drawCenteredText(cx, y, GUIDE_LINE1, F_FOOTER, COLOR_MAIN);
+    drawGuideActionBlock(cx, box.headlineY, box.dmLineY);
 
-    drawCenteredText(cx, y + FOOTER_LINE_H, GUIDE_LINE2, F_FOOTER, COLOR_MAIN);
+    drawGuideFirstBox(box.firstBox);
 
   }
 
@@ -1734,7 +2130,7 @@
 
     if (state.botPost && pos.botY != null) {
 
-      drawBotPostLabel(cx, pos.botY);
+      drawBotPostLabel(cx + BOT_LABEL_SHIFT_X, pos.botY);
 
     }
 
