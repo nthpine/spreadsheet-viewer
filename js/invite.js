@@ -85,6 +85,7 @@
   const ORBITRON_TRACKING = "-0.02em";
 
   const SLOT_DIVIDER_MARGIN = 80;
+  const TOP3_SPLIT = 0.66;
   const SLOT_DIVIDER_COLOR = "rgba(255,255,255,0.15)";
   const SLOT_DIVIDER_WIDTH = 2;
 
@@ -586,7 +587,7 @@
   }
 
   // 順: 日付 → 募集人数 → 時間 → 場所 → 備考ボックス
-  function drawSessionSlot(cx, slotTop, slotW, slotH, session, baseScale) {
+  function drawSessionSlot(cx, slotTop, slotW, slotH, session, baseScale, gapScale) {
     const pad = 40;
     const maxW = slotW - pad * 2;
     const s = baseScale;
@@ -597,9 +598,13 @@
     const noteH = 14 * SCALE * s;
     const notePadY = NOTE_BOX_PAD_Y * s;
     const noteBoxH = noteH * 1.55 + notePadY * 2;
-    const g1 = 14 * SCALE * s, g2 = 16 * SCALE * s, g3 = 10 * SCALE * s, g4 = 18 * SCALE * s;
+    const gs = s * (gapScale || 1);
+    const g1 = 14 * SCALE * gs, g2 = 16 * SCALE * gs, g3 = 10 * SCALE * gs, g4 = 18 * SCALE * gs;
     const totalH = dateH + g1 + recruitH + g2 + timeH + g3 + placeH + g4 + noteBoxH;
     let y = slotTop + (slotH - totalH) / 2;
+    // keep >=32px between note box and divider
+    const SLOT_BOTTOM_CLEAR = 32;
+    if (y + totalH > slotTop + slotH - SLOT_BOTTOM_CLEAR) y = Math.max(slotTop, slotTop + slotH - SLOT_BOTTOM_CLEAR - totalH);
 
     // 日付 → 人数
     y += dateH / 2;
@@ -645,9 +650,9 @@
     if (n === 2) return [{ x: 0, y: top, w: hw, h: h }, { x: hw, y: top, w: hw, h: h }];
     if (n === 3)
       return [
-        { x: 0, y: top, w: W, h: h * 0.63 },
-        { x: 0, y: top + h * 0.63, w: hw, h: h * 0.37 },
-        { x: hw, y: top + h * 0.63, w: hw, h: h * 0.37 },
+        { x: 0, y: top, w: W, h: h * TOP3_SPLIT },
+        { x: 0, y: top + h * TOP3_SPLIT, w: hw, h: h * (1 - TOP3_SPLIT) },
+        { x: hw, y: top + h * TOP3_SPLIT, w: hw, h: h * (1 - TOP3_SPLIT) },
       ];
     return [
       { x: 0, y: top, w: hw, h: hh },
@@ -668,13 +673,13 @@
     const m = 40;
     if (n === 2) drawDividerLine(CANVAS_W / 2, top + m, CANVAS_W / 2, bottom - m);
     if (n >= 3) {
-      drawDividerLine(m, top + h * 0.63, CANVAS_W - m, top + h * 0.63);
-      drawDividerLine(CANVAS_W / 2, top + h * 0.63 + m, CANVAS_W / 2, bottom - m);
+      drawDividerLine(m, top + h * TOP3_SPLIT, CANVAS_W - m, top + h * TOP3_SPLIT);
+      drawDividerLine(CANVAS_W / 2, top + h * TOP3_SPLIT + m, CANVAS_W / 2, bottom - m);
     }
     for (let i = 0; i < n; i++) {
       const c = cells[i];
       const scale = n === 3 ? (i === 0 ? 1.01 : 0.42) : base;
-      drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale);
+      drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale, n === 3 && i === 0 ? 0.8 : 1);
     }
   }
 
