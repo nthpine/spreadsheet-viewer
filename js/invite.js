@@ -673,7 +673,7 @@
     }
     for (let i = 0; i < n; i++) {
       const c = cells[i];
-      const scale = n === 3 && i === 0 ? 0.92 : base;
+      const scale = n === 3 ? (i === 0 ? 0.92 : 0.42) : base;
       drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale);
     }
   }
