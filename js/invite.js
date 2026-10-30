@@ -645,9 +645,9 @@
     if (n === 2) return [{ x: 0, y: top, w: hw, h: h }, { x: hw, y: top, w: hw, h: h }];
     if (n === 3)
       return [
-        { x: 0, y: top, w: W, h: h * 0.58 },
-        { x: 0, y: top + h * 0.58, w: hw, h: h * 0.42 },
-        { x: hw, y: top + h * 0.58, w: hw, h: h * 0.42 },
+        { x: 0, y: top, w: W, h: h * 0.63 },
+        { x: 0, y: top + h * 0.63, w: hw, h: h * 0.37 },
+        { x: hw, y: top + h * 0.63, w: hw, h: h * 0.37 },
       ];
     return [
       { x: 0, y: top, w: hw, h: hh },
@@ -668,12 +668,12 @@
     const m = 40;
     if (n === 2) drawDividerLine(CANVAS_W / 2, top + m, CANVAS_W / 2, bottom - m);
     if (n >= 3) {
-      drawDividerLine(m, top + h * 0.58, CANVAS_W - m, top + h * 0.58);
-      drawDividerLine(CANVAS_W / 2, top + h * 0.58 + m, CANVAS_W / 2, bottom - m);
+      drawDividerLine(m, top + h * 0.63, CANVAS_W - m, top + h * 0.63);
+      drawDividerLine(CANVAS_W / 2, top + h * 0.63 + m, CANVAS_W / 2, bottom - m);
     }
     for (let i = 0; i < n; i++) {
       const c = cells[i];
-      const scale = n === 3 ? (i === 0 ? 0.92 : 0.42) : base;
+      const scale = n === 3 ? (i === 0 ? 1.01 : 0.42) : base;
       drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale);
     }
   }
