@@ -85,7 +85,8 @@
   const ORBITRON_TRACKING = "-0.02em";
 
   const SLOT_DIVIDER_MARGIN = 80;
-  const TOP3_SPLIT = 0.66;
+  const TOP3_SPLIT = 0.64;
+  const TIME_ROW_RATIO = 0.72;
   const SLOT_DIVIDER_COLOR = "rgba(255,255,255,0.15)";
   const SLOT_DIVIDER_WIDTH = 2;
 
@@ -599,8 +600,8 @@
     const notePadY = NOTE_BOX_PAD_Y * s;
     const noteBoxH = noteH * 1.55 + notePadY * 2;
     const gs = s * (gapScale || 1);
-    const g1 = 14 * SCALE * gs, g2 = 16 * SCALE * gs, g3 = 10 * SCALE * gs, g4 = 18 * SCALE * gs;
-    const totalH = dateH + g1 + recruitH + g2 + timeH + g3 + placeH + g4 + noteBoxH;
+    const g1 = 18 * SCALE * gs, g2 = 22 * SCALE * gs, g3 = 10 * SCALE * gs, g4 = 18 * SCALE * gs;
+    const totalH = dateH + g1 + recruitH + g2 + placeH + g4 + (session.note ? noteBoxH : 0);
     let y = slotTop + (slotH - totalH) / 2;
     // keep >=32px between note box and divider
     const SLOT_BOTTOM_CLEAR = 32;
@@ -613,12 +614,22 @@
     const rScale = Math.min(s, s * maxW / measureRecruitWidthAtScale(session.recruiting, s));
     drawRecruitLine(cx, y, session.recruiting, rScale);
     y += recruitH / 2 + g2 + timeH / 2;
-    drawCenteredText(cx, y, session.time, scaledFont(F_TIME, s), COLOR_MAIN);
-    y += timeH / 2 + g3 + placeH / 2;
-    ctx.font = scaledFont(F_PLACE, s);
-    const pw = ctx.measureText(normalizePlaceName(session.place)).width;
-    const ps = Math.min(s, s * maxW / pw);
-    drawCenteredText(cx, y, normalizePlaceName(session.place), scaledFont(F_PLACE, ps), COLOR_MAIN);
+    // 場所 + 時間帯 を同じ1行（時間は 0.72 倍に縮小）
+    const placeTxt = normalizePlaceName(session.place);
+    const ROW_GAP = 22 * s;
+    ctx.font = scaledFont(F_PLACE, s); const pw0 = ctx.measureText(placeTxt).width;
+    ctx.font = scaledFont(F_TIME, s * TIME_ROW_RATIO); const tw0 = ctx.measureText(session.time).width;
+    const rs = Math.min(1, maxW / (pw0 + ROW_GAP + tw0));
+    const pw = pw0 * rs, tw = tw0 * rs, gapW = ROW_GAP * rs;
+    const x0 = cx - (pw + gapW + tw) / 2;
+    // 場所と時間帯をベースライン(下のライン)で揃える。時間帯は灰色
+    ctx.font = scaledFont(F_PLACE, s * rs);
+    const pm = ctx.measureText(placeTxt);
+    const baseY = y + (pm.actualBoundingBoxAscent - pm.actualBoundingBoxDescent) / 2;
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = COLOR_MAIN;
+    textShadowOn(); ctx.fillText(placeTxt, x0, baseY);
+    ctx.font = scaledFont(F_TIME, s * TIME_ROW_RATIO * rs); ctx.fillStyle = "#9aa4b2";
+    ctx.fillText(session.time, x0 + pw + gapW, baseY); textShadowOff();
     y += placeH / 2 + g4;
 
     if (session.note) {
@@ -663,7 +674,7 @@
   }
 
   function drawScheduleArea(sessions, guideBox) {
-    const top = MIN_TOP_PAD + 60;
+    const top = MIN_TOP_PAD + 90;
     const bottom = guideBox.y - 20;
     const h = bottom - top;
     const n = sessions.length;
@@ -679,7 +690,7 @@
     for (let i = 0; i < n; i++) {
       const c = cells[i];
       const scale = n === 3 ? (i === 0 ? 1.01 : 0.42) : base;
-      drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale, n === 3 && i === 0 ? 0.8 : 1);
+      drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale, n === 3 && i === 0 ? 0.95 : 1);
     }
   }
 
