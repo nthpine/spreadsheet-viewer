@@ -654,11 +654,11 @@
     }
   }
 
-  // 田の字レイアウト: 1=全面 / 2=横並び / 3=品(上が最新) / 4=2x2(左上が最新)
+  // 田の字レイアウト: 1=全面 / 2=上下（上が大きく） / 3=品(上が最新) / 4=2x2(左上が最新)
   function getCells(n, top, h) {
     const W = CANVAS_W, hw = W / 2, hh = h / 2;
     if (n === 1) return [{ x: 0, y: top, w: W, h: h }];
-    if (n === 2) return [{ x: 0, y: top, w: hw, h: h }, { x: hw, y: top, w: hw, h: h }];
+    if (n === 2) return [ { x: 0, y: top, w: W, h: h * TOP3_SPLIT }, { x: 0, y: top + h * TOP3_SPLIT, w: W, h: h * (1 - TOP3_SPLIT) } ];
     if (n === 3)
       return [
         { x: 0, y: top, w: W, h: h * TOP3_SPLIT },
@@ -682,15 +682,15 @@
     const cells = getCells(n, top, h);
     const base = n === 1 ? 1 : n === 2 ? 0.62 : 0.5;
     const m = 40;
-    if (n === 2) drawDividerLine(CANVAS_W / 2, top + m, CANVAS_W / 2, bottom - m);
+    if (n === 2) drawDividerLine(m, top + h * TOP3_SPLIT, CANVAS_W - m, top + h * TOP3_SPLIT);
     if (n >= 3) {
       drawDividerLine(m, top + h * TOP3_SPLIT, CANVAS_W - m, top + h * TOP3_SPLIT);
       drawDividerLine(CANVAS_W / 2, top + h * TOP3_SPLIT + m, CANVAS_W / 2, bottom - m);
     }
     for (let i = 0; i < n; i++) {
       const c = cells[i];
-      const scale = n === 3 ? (i === 0 ? 1.01 : 0.42) : base;
-      drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale, n === 3 && i === 0 ? 0.95 : 1);
+      const scale = n === 3 || n === 2 ? (i === 0 ? 1.01 : 0.42) : base;
+      drawSessionSlot(c.x + c.w / 2, c.y, c.w, c.h, sessions[i], scale, (n === 3 || n === 2) && i === 0 ? 0.95 : 1);
     }
   }
 
